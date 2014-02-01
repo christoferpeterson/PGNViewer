@@ -1,0 +1,9 @@
+#compiled folders#
+
+/bin
+/obj
+/packages
+
+#other unimportant files
+*.sublime-project
+*.sublime-workspace

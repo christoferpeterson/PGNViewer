@@ -1,0 +1,11 @@
+@font-face
+{
+	font-family: 'chessBoard';
+	src: url('../fonts/DiaTTUSA.woff'),
+		 url('../fonts/DiaTTUSA.ttf');
+}
+
+.viewer .board {
+	font-size: 20pt;
+	font-family: 'chessBoard';
+}
