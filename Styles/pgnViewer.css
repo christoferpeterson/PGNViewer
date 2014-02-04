@@ -5,7 +5,10 @@
 		 url('../fonts/DiaTTUSA.ttf');
 }
 
-.viewer .board {
+.board {
 	font-size: 20pt;
 	font-family: 'chessBoard';
+	white-space: nowrap;
+	width: 10em;
+	height: 10em;
 }

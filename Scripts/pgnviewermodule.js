@@ -18,6 +18,8 @@ pgnViewerModule.prototype.initModule = function () {
 	this.buildModule();
 
 	this.loadGame(0);
+
+	this.updateBoard(this.chessBoard.board);
 };
 
 pgnViewerModule.prototype.buildModule = function() {
@@ -25,7 +27,22 @@ pgnViewerModule.prototype.buildModule = function() {
 	this.loadPGNs();
 
 	var $pgnSelect = $('<select data-changeaction="loadGame">');
-	var $notationWindow = $('<pre class="notationWindow" />')
+	var $board = $('<div class="board"></div>');
+	var $notationWindow = '';//$('<pre class="notationWindow" />');
+
+	var b = [];
+	b.push('XABCDEFGHY');
+	b.push('8-+-+-+-+(');
+	b.push('7+-+-+-+-\'');
+	b.push('6-+-+-+-+&');
+	b.push('5+-+-+-+-%');
+	b.push('4-+-+-+-+$');
+	b.push('3+-+-+-+-#');
+	b.push('2-+-+-+-+"');
+	b.push('1+-+-+-+-!');
+	b.push('xabcdefghy');
+
+	$board.html(b.join('<br />\r\n'));
 
 	var pgn;
 	for (var i = 0; i < this.pgns.length; i++) {
@@ -33,7 +50,7 @@ pgnViewerModule.prototype.buildModule = function() {
 		$pgnSelect.append($('<option value="' + i + '">' + pgn.white + ' (' + pgn.whiteelo + ') - ' + pgn.black + ' (' + pgn.blackelo + ')</option>'))
 	};
 
-	this.$module.append($pgnSelect, $notationWindow);
+	this.$module.append($pgnSelect, $board, $notationWindow);
 };
 
 pgnViewerModule.prototype.action_loadGame = function($el, val, e) {
@@ -53,7 +70,7 @@ pgnViewerModule.prototype.loadGame = function(gameNumber) {
 	this.currentGame.moves = this.pgns[gameNumber].moves = this.currentGame.moves || this.getMoves(this.currentGame);
 
 	// display the move interface
-	this.displayMoves();
+	//this.displayMoves();
 
 	return true;
 };
@@ -163,9 +180,9 @@ pgnViewerModule.prototype.getMoves = function(game) {
 
 	delete variations;
 
-	var chessBoard = new ChessBoard();
+	this.chessBoard = new ChessBoard();
 
-	moves = chessBoard.validate(moves, fen);
+	moves = this.chessBoard.validate(moves, fen);
 
 	return moves;
 }

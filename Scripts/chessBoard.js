@@ -27,7 +27,7 @@ ChessBoard.prototype.init = function(fen) {
 	sPosition = FEN representation of a chess position
 */
 ChessBoard.prototype.validate = function(rMoves, sPosition) {
-	this.parseFEN(sPosition);
+	this.startingPosition = this.parseFEN(sPosition);
 	return this.validate_moves(rMoves);
 };
 
@@ -53,7 +53,7 @@ ChessBoard.prototype.validate_moves = function(rMoves) {
 				rMoves[i].smith = validMove.smith;
 				rMoves[i].board = validMove.board;
 				this.board = validMove.board;
-				this.displayBoard();
+				//this.displayBoard();
 			}, this));
 		};
 	}
@@ -87,7 +87,7 @@ ChessBoard.prototype.checkMove = function(oMove, board, originalMove) {
 	if(oMove.castle)
 		oMove.castle = oMove.castle.toLowerCase();
 
-	console.info('--', oMove.fullText, '--');
+	//console.info('--', oMove.fullText, '--');
 	if(oMove.castle)
 	{
 		var originalKingSquare = isWhite ? 4 : 60;
@@ -363,6 +363,8 @@ ChessBoard.prototype.parseFEN = function(fen) {
 
 	this.currentPosition = fen;
 	this.displayBoard();
+
+	return this.board;
 };
 
 ChessBoard.prototype.isNumber = function(n) {
