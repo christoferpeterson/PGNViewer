@@ -447,6 +447,10 @@ pgnViewerModule.prototype.convertVariationsToMoves = function(rVariations) {
 	var moves = [];
 	var move;
 
+	if(rVariations === undefined) {
+		return moves;
+	}
+
 	for (var i = 0; i < rVariations.length; i++) {
 		move = this.convertStringToMoves(rVariations[i].text);
 
@@ -667,7 +671,7 @@ pgnViewerModule.prototype.moveRegex = function() {
 				  + 	'(?:(?:(?:\\s*)?(\\d+))\\.{0,3}\\s*)?' // optional move number indicator on black's move
 				  +		moveRegex // move
 				  +		commentRegex // comment after move
-				  + ')?'
+				  + ')?(?=(?:[^"]*"[^"]*")*[^"]*$)'
 				;
 
 		this._moveRegex = regex;
