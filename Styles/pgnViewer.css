@@ -11,4 +11,56 @@
 	white-space: nowrap;
 	width: 10em;
 	height: 10em;
+	float: left;
+}
+
+.notationWindow {
+	float: left;
+	height: 15em;
+	width: 15em;
+	margin: 1em;
+	overflow-y: auto;
+}
+
+.comments { 
+	clear: both;
+	float: left;
+	width: 15em;
+	height: 15em;
+}
+
+.controls {
+	float: left;
+	width: 15em;
+}
+
+.variations {
+	font-style: italic;
+	font-weight: normal;
+	margin: 0 0 3px;
+}
+
+.moves {
+	display: block;
+}
+
+.moves .moves {
+	margin-left: 1em;
+}
+
+
+
+[data-clickaction] {
+	cursor: pointer;
+	margin: 0 0 3px;
+}
+
+[data-clickaction="clickMove"] {
+	display: inline-block;
+	padding: 2px 0;
+	margin-left: 3px;
+}
+[data-clickaction="clickMove"].active {
+	background: #ccc;
+	font-weight: bold;
 }

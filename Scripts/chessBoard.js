@@ -1,6 +1,5 @@
 var ChessBoard = function() {
 	this.board = this.clearBoard();
-	this.displayBoard();
 };
 
 ChessBoard.prototype.specialCases = { castleRights: undefined, enpassant: undefined };
@@ -26,19 +25,82 @@ ChessBoard.prototype.init = function(fen) {
 	}
 	sPosition = FEN representation of a chess position
 */
-ChessBoard.prototype.validate = function(rMoves, sPosition) {
+ChessBoard.prototype.setMoves = function(rMoves, sPosition) {
 	this.startingPosition = this.parseFEN(sPosition);
-	return this.validate_moves(rMoves);
+	this.currentPosition = JSON.parse(JSON.stringify(this.startingPosition));
+	this.moves = this.validate_moves(rMoves);
+	this.currentMove = -1;
 };
 
-ChessBoard.prototype.validate_moves = function(rMoves) {
+ChessBoard.prototype.nextMove = function() {
+	return this.jumpToMove(this.currentMove+1);
+};
+
+ChessBoard.prototype.prevMove = function() {
+	return this.jumpToMove(this.currentMove-1);
+};
+
+ChessBoard.prototype.jumpToMove = function(move) {
+	if(typeof move === 'string') {
+		var m = this.getComplexMove(move);
+		this.currentMove = move;
+		this.currentPosition = m.board;
+		return m;
+	}
+
+	if(move < 0) {
+		this.currentMove = -1;
+		this.currentPosition = this.startingPosition;
+		return {};
+	}
+	
+	if(move >= this.moves.length) {
+		this.currentMove = this.moves.length-1;
+		this.currentPosition = this.moves[this.currentMove].board;
+
+		return this.moves[this.currentMove];
+	}
+
+	this.currentMove = move;
+	this.currentPosition = this.moves[this.currentMove].board;
+
+	return this.moves[this.currentMove];
+};
+
+ChessBoard.prototype.getComplexMove = function(move) {
+	console.info(move);
+	var type = typeof move;
+
+	if(type === 'string') {
+		if(move === '0-0-0') {
+			return { board: this.startingPosition };
+		}
+
+		var getMove = function(rMoves, m, isVariation) {
+			var address = m.split('-');
+			var moveNumber = parseInt(address.shift()) - 1;
+			var variationNumber = parseInt(address.shift());
+
+			console.info(moveNumber, variationNumber, address.join('-'), isVariation);
+		}
+
+		return getMove(this.moves, move, false);
+	}
+
+	if(type === 'number') {
+		return this.moves[move];
+	}
+};
+
+ChessBoard.moveRegex = /(?:(?:([PNBRQK])?([a-h]?[1-8]?)?(x)?([a-h][1-8])(?:\=([PNBRQ]))?)|(O(?:-?O){1,2})[\+#]?)/gi;
+ChessBoard.prototype.validate_moves = function(rMoves, board) {
 	if(rMoves) {
 		// ***** TO DO ***** UPDATE TO SUPPORT CASTLE WITH ZEROES
-		var moveRegex = /(?:(?:([PNBRQK])?([a-h]?[1-8]?)?(x)?([a-h][1-8])(?:\\=([PNBRQ]))?)|(O(?:-?O){1,2})[\\+#]?)/gi
 		var algebraic;
 		var validMove;
+		var board = JSON.parse(JSON.stringify(board || this.startingPosition));
 		for (var i = 0; i < rMoves.length; i++) {
-			rMoves[i].algebraic.replace(moveRegex, $.proxy(function() { 
+			rMoves[i].algebraic.replace(ChessBoard.moveRegex, $.proxy(function() { 
 				algebraic = {
 					fullText: arguments[0],
 					piece: arguments[1],
@@ -47,19 +109,36 @@ ChessBoard.prototype.validate_moves = function(rMoves) {
 					finalSquare: arguments[4],
 					promotionPiece: arguments[5],
 					castle: arguments[6],
+					check: arguments[7],
 					player: rMoves[i].player
 				};
-				validMove = this.checkMove(algebraic, this.board, rMoves[i]);
+				try {
+					validMove = this.checkMove(algebraic, board, rMoves[i]);
+				}
+				catch(err) {
+					console.info(err);
+				}
+				
+				rMoves[i].origin = validMove.origin;
+				rMoves[i].destination = validMove.destination;
 				rMoves[i].smith = validMove.smith;
-				rMoves[i].board = validMove.board;
-				this.board = validMove.board;
-				//this.displayBoard();
+				rMoves[i].board = JSON.parse(JSON.stringify(validMove.board));
+
+				if(rMoves[i].variations.length > 0) {
+					var prevBoard = rMoves[i-1] === undefined ? this.startingPosition : rMoves[i-1].board;
+					for (var j = 0; j < rMoves[i].variations.length; j++) {
+						rMoves[i].variations[j] = this.validate_moves(rMoves[i].variations[j], prevBoard);
+					};
+				}
+
+				board = validMove.board;
+
 			}, this));
 		};
 	}
 
 	return rMoves;
-}
+};
 
 /*
 	move: {
@@ -139,7 +218,7 @@ ChessBoard.prototype.checkMove = function(oMove, board, originalMove) {
 			};
 
 			return poss;
-		}
+		};
 
 		if(oMove.isCapture) {
 			if(square) {
@@ -217,7 +296,7 @@ ChessBoard.prototype.checkMove = function(oMove, board, originalMove) {
 
 	var fen = this.convertBoardToFEN(board);
 
-	return { fen: fen, smith: oMove.fullText, board: board };
+	return { fen: fen, smith: oMove.fullText, board: board, origin: startSquare, destination: endSquare };
 };
 
 
@@ -322,29 +401,30 @@ ChessBoard.prototype.isUnderAttack = function(square, board, player) {
 }
 
 ChessBoard.prototype.parseFEN = function(fen) {
-	this.board = this.clearBoard();
+	var board = this.clearBoard();
 
 	if(!fen){
 		return;
 	}
 
+	// separate the various fen data points
 	var FENData = fen.split(' ');
+
+	// get the piece data
 	var pieceArrangement = FENData[0];
-	this.whosTurn = FENData[1];
-	this.specialCases.castleRights = FENData[2];
-	this.specialCases.enpassant = FENData[3];
-	var halfMoves = FENData[4];
-	var fullMoves = FENData[5];
 	var pieceData = pieceArrangement.split('/');
 	var piece;
 	var boardPosition = 63;
 
 	var offset;
+	// loop over all the board squares and check if
+	// they have a piece on them in the fen piece data
 	for(var i = 0; i < 8; i++)
 	{
 		offset = 0;
 		for(var j = 0; j < 8; j++)
 		{
+			// no pieces are represented by the number of empty squares
 			if(this.isNumber(pieceData[i][7-j]))
 			{
 				offset = parseInt(pieceData[i][7-j]);
@@ -353,18 +433,26 @@ ChessBoard.prototype.parseFEN = function(fen) {
 			}
 			else if(pieceData[i][7-j])
 			{
+				// match the fen syntax with the map
 				if(this.getFENsymbol(pieceData[i][7-j])) {
-					this.board.squares[boardPosition] = this.getFENsymbol(pieceData[i][7-j]);
+					board.squares[boardPosition] = this.getFENsymbol(pieceData[i][7-j]);
 					boardPosition--;
 				}
 			}
 		}
 	}
 
-	this.currentPosition = fen;
-	this.displayBoard();
+	// map the rest of the fen data
+	board.toMove = FENData[1];
+	board.wCastleKingside = FENData[2].match(/K/).length > 0;
+	board.wCastleQueenside = FENData[2].match(/Q/).length > 0;
+	board.bCastleKingside = FENData[2].match(/k/).length > 0;
+	board.bCastleQueenside = FENData[2].match(/q/).length > 0;
+	board.enPassant = FENData[3] === '-' ? undefined : FENData[3];
+	board.plyCount = FENData[4] || 0;
+	board.moveNumber = FENData[4] || 0;
 
-	return this.board;
+	return board;
 };
 
 ChessBoard.prototype.isNumber = function(n) {
@@ -372,8 +460,9 @@ ChessBoard.prototype.isNumber = function(n) {
 }
 
 // displays the board in the console
-ChessBoard.prototype.displayBoard = function() {
+ChessBoard.prototype.displayBoard = function(board) {
 	//this.flip = true;
+	board = board || this.board;
 	console.info('');
 	console.info('-----------------------------------------------------------------');
 
@@ -388,8 +477,8 @@ ChessBoard.prototype.displayBoard = function() {
 
 			while(j < 8)
 			{
-				if(this.board.squares[i-j])
-					s.push(this.board.squares[i-j].pieceType);
+				if(board.squares[i-j])
+					s.push(board.squares[i-j].pieceType);
 				else
 					s.push(i-j);
 
@@ -409,8 +498,8 @@ ChessBoard.prototype.displayBoard = function() {
 			j = 0;
 
 			while(j < 8) {
-				if(this.board.squares[i+j])
-					s.push(this.board.squares[i+j].pieceType);
+				if(board.squares[i+j])
+					s.push(board.squares[i+j].pieceType);
 				else
 					s.push(i+j);
 
@@ -433,18 +522,18 @@ ChessBoard.prototype.displayBoard = function() {
 ChessBoard.prototype.getFENsymbol = function(a) {
 	var piece;
 	switch(a) {
-		case 'r': {piece = {pieceType: '♜', owner: 'b'};} break;
-		case 'n': {piece = {pieceType: '♞', owner: 'b'};} break;
-		case 'b': {piece = {pieceType: '♝', owner: 'b'};} break;
-		case 'q': {piece = {pieceType: '♛', owner: 'b'};} break;
-		case 'k': {piece = {pieceType: '♚', owner: 'b'};} break;
-		case 'p': {piece = {pieceType: '♟', owner: 'b'};} break;
-		case 'R': {piece = {pieceType: '♖', owner: 'w'};} break;
-		case 'N': {piece = {pieceType: '♘', owner: 'w'};} break;
-		case 'B': {piece = {pieceType: '♗', owner: 'w'};} break;
-		case 'Q': {piece = {pieceType: '♕', owner: 'w'};} break;
-		case 'K': {piece = {pieceType: '♔', owner: 'w'};} break;
-		case 'P': {piece = {pieceType: '♙', owner: 'w'};} break;
+		case 'r': {piece = {pieceType: '♜', owner: 'b', diagram: 'r', blackSquare: 't'};} break;
+		case 'n': {piece = {pieceType: '♞', owner: 'b', diagram: 'n', blackSquare: 's'};} break;
+		case 'b': {piece = {pieceType: '♝', owner: 'b', diagram: 'l', blackSquare: 'v'};} break;
+		case 'q': {piece = {pieceType: '♛', owner: 'b', diagram: 'q', blackSquare: 'w'};} break;
+		case 'k': {piece = {pieceType: '♚', owner: 'b', diagram: 'k', blackSquare: 'm'};} break;
+		case 'p': {piece = {pieceType: '♟', owner: 'b', diagram: 'p', blackSquare: 'z'};} break;
+		case 'R': {piece = {pieceType: '♖', owner: 'w', diagram: 'R', blackSquare: 't'};} break;
+		case 'N': {piece = {pieceType: '♘', owner: 'w', diagram: 'N', blackSquare: 's'};} break;
+		case 'B': {piece = {pieceType: '♗', owner: 'w', diagram: 'L', blackSquare: 'v'};} break;
+		case 'Q': {piece = {pieceType: '♕', owner: 'w', diagram: 'Q', blackSquare: 'w'};} break;
+		case 'K': {piece = {pieceType: '♔', owner: 'w', diagram: 'K', blackSquare: 'm'};} break;
+		case 'P': {piece = {pieceType: '♙', owner: 'w', diagram: 'P', blackSquare: 'z'};} break;
 		default: piece = undefined;
 	}
 
@@ -462,7 +551,15 @@ ChessBoard.prototype.clearBoard = function() {
 			undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, // h6-a6
 			undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, // h7-a7
 			undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined  // h8-a8
-		]
+		],
+		wCastleKingside: false,
+		wCastleQueenside: false,
+		bCastleKingside: false,
+		bCastleQueenside: false,
+		enPassant: undefined,
+		toMove: 'w',
+		plyCount: 0,
+		moveNumber: 0
 	};
 };
 

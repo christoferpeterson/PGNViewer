@@ -3,7 +3,11 @@ var pgnViewerModule = function() {};
 pgnViewerModule.prototype = new Module();
 
 pgnViewerModule.prototype.elementMap = {
-	'notation' : 'pre.notationWindow'
+	'notation' : 'div.notationWindow',
+	'board' : 'div.board',
+	'backward': '[data-clickaction="prevMove"], [data-clickaction="start"]',
+	'forward': '[data-clickaction="nextMove"], [data-clickaction="end"]',
+	'clickMove': '[data-clickaction="clickMove"]'
 };
 
 pgnViewerModule.prototype.initModule = function () {
@@ -13,22 +17,80 @@ pgnViewerModule.prototype.initModule = function () {
 	this.pgns = [];
 	this.currentGame;
 	this.currentPosition = [];
+	this.flip = false;
 
 	// build the module
 	this.buildModule();
 
+	// load the first game
 	this.loadGame(0);
 
-	this.updateBoard(this.chessBoard.board);
+	// get the starting position
+	this.updateBoard(this.chessBoard.startingPosition);
 };
+
+pgnViewerModule.prototype.action_loadGame = function($el, val, e) {
+	this.loadGame(val);
+};
+
+pgnViewerModule.prototype.action_flip = function($el, val, e) {
+	this.chessBoard.flip = !this.chessBoard.flip;
+	this.updateBoard();
+};
+
+pgnViewerModule.prototype.action_nextMove = function($el, val, e) {
+	this.loadNextMove();
+};
+
+pgnViewerModule.prototype.action_prevMove = function($el, val, e) {
+	var move = this.chessBoard.prevMove();
+
+	if(move) {
+		this.updateBoard();
+	}
+};
+
+pgnViewerModule.prototype.action_start = function($el, val, e) {
+	var move = this.chessBoard.jumpToMove(-1);
+
+	if(move) {
+		this.updateBoard();
+	}
+};
+
+pgnViewerModule.prototype.action_end = function($el, val, e) {
+	var move = this.chessBoard.jumpToMove(this.chessBoard.moves.length-1);
+
+	if(move) {
+		this.updateBoard();
+	}
+};
+
+pgnViewerModule.prototype.action_clickMove = function($el, val, e) {
+	var move = this.chessBoard.jumpToMove(val);
+
+	if(move) {
+		this.updateBoard();
+	}
+};
+
+pgnViewerModule.prototype.loadNextMove = function() {
+	var move = this.chessBoard.nextMove();
+
+	if(move) {
+		this.updateBoard();
+	}
+};
+
 
 pgnViewerModule.prototype.buildModule = function() {
 	// load in the PGNs from the dom
 	this.loadPGNs();
 
-	var $pgnSelect = $('<select data-changeaction="loadGame">');
 	var $board = $('<div class="board"></div>');
-	var $notationWindow = '';//$('<pre class="notationWindow" />');
+	var $notationWindow = $('<div class="notationWindow"></div>');
+	var $comments = $('<div class="comments"></div>');
+	var $controls = this.buildControls();
 
 	var b = [];
 	b.push('XABCDEFGHY');
@@ -44,18 +106,31 @@ pgnViewerModule.prototype.buildModule = function() {
 
 	$board.html(b.join('<br />\r\n'));
 
+	
+	this.$module.append($board, $notationWindow, $comments, $controls);
+};
+pgnViewerModule.prototype.buildControls = function() {
+	var $c = $('<div class="controls"></div>');
+	var $pgnSelect = $('<select data-changeaction="loadGame">');
+
+	$c.append($('<button data-clickaction="start">start</button>'));
+	$c.append($('<button data-clickaction="prevMove">prev</button>'));
+	$c.append($('<button data-clickaction="nextMove">next</button>'));
+	$c.append($('<button data-clickaction="end">end</button>'));
+	$c.append($('<button data-clickaction="flip">flip</button>'));
+
 	var pgn;
 	for (var i = 0; i < this.pgns.length; i++) {
 		pgn = this.pgns[i];
 		$pgnSelect.append($('<option value="' + i + '">' + pgn.white + ' (' + pgn.whiteelo + ') - ' + pgn.black + ' (' + pgn.blackelo + ')</option>'))
 	};
 
-	this.$module.append($pgnSelect, $board, $notationWindow);
-};
+	if(this.pgns.length > 1) {
+		$c.append($pgnSelect);
+	}
 
-pgnViewerModule.prototype.action_loadGame = function($el, val, e) {
-	this.loadGame(val);
-};
+	return $c;
+}
 
 // load a game from the list of games
 pgnViewerModule.prototype.loadGame = function(gameNumber) {
@@ -70,31 +145,95 @@ pgnViewerModule.prototype.loadGame = function(gameNumber) {
 	this.currentGame.moves = this.pgns[gameNumber].moves = this.currentGame.moves || this.getMoves(this.currentGame);
 
 	// display the move interface
-	//this.displayMoves();
+	this.displayMoves();
 
 	return true;
 };
 
-// update the move window interface with the current moves
-pgnViewerModule.prototype.displayMoves = function() {
-	this.$el('notation').empty();
-	var moveOutput = function(rMoves, prepend) {
-		prepend = prepend || '';
-		var s = [];
-		for (var i = 0; i < rMoves.length; i++) {
-			s.push(prepend + rMoves[i].fullText);
+pgnViewerModule.prototype.updateBoard = function(board) {
+	// get the new board
+	var diagram = this.generateDiagram(board);
 
-			if(rMoves[i].variations) {
-				for (var j = 0; j < rMoves[i].variations.length; j++) {
-					s = s.concat(moveOutput(rMoves[i].variations[j], prepend + '\t'));
-				};
-			}
-		};
-		return s;
+	// disable or enable the backward buttons
+	if(this.chessBoard.currentMove === -1)
+		this.$el('backward').attr('disabled', 'disabled');
+	else
+		this.$el('backward').removeAttr('disabled');
+
+	// disable or enable the forward buttons
+	if(this.chessBoard.currentMove === this.chessBoard.moves.length-1)
+		this.$el('forward').attr('disabled', 'disabled');
+	else
+		this.$el('forward').removeAttr('disabled');
+
+	this.$el('clickMove').removeClass('active');
+	var $note = this.$el('clickMove').filter('[data-actionvalue="' + this.chessBoard.currentMove + '"]');
+	$note.addClass('active');
+
+	var newScrollPos = 0;
+	if($note.length > 0) {
+		newScrollPos = $note.offset().top - this.$el('notation').offset().top + this.$el('notation').scrollTop();
 	}
 
-	var text = moveOutput(this.currentGame.moves);
-	this.$el('notation').html(text.join('<br />'));
+	this.$el('notation').scrollTop(newScrollPos);
+
+	// display the board on the screen
+	this.$el('board').html(diagram);
+}
+
+pgnViewerModule.prototype.displayMoves = function() {
+	this.$el('notation').html(this.setupNotation(this.chessBoard.moves));
+}
+
+// update the move window interface with the current moves
+pgnViewerModule.prototype.setupNotation = function(rMoves, variationNumber) {
+	var html = [];
+	var i = 0;
+	var j = 0;
+	var address = [];
+
+	html.push('<span class="moves">');
+	console.info(rMoves);
+
+	while(i < rMoves.length) {
+		j = 0;
+
+		while(j < 2) {
+			if(rMoves[i+j]) {
+				address.push(rMoves[i+j].plyCount);
+
+				if(variationNumber) {
+					address.push(variationNumber);
+				}
+
+				address.push(i+j);
+				
+				html.push(' <span data-clickaction="clickMove" data-actionvalue="' + address.join('-') + '">');
+				html.push(rMoves[i].moveNumber + '. ');
+				html.push(rMoves[i+j].algebraic + (rMoves[i+j].check || ''));
+				html.push('</span>');
+				if(rMoves[i+j].variations.length > 0) {
+					html.push('<span class="variations">');
+					for (var k = 0; k < rMoves[i+j].variations.length; k++) {
+						if(variationNumber) {
+							variationNumber += '-' + (k+1);
+						}
+						else {
+							variationNumber = k+1;
+						}
+						html.push(this.setupNotation(rMoves[i+j].variations[k], variationNumber));
+					};
+					html.push('</span>');
+				}
+			}
+			j++;
+		}
+
+		i += 2;
+	}
+	html.push('</span>');
+
+	return html.join('');
 }
 
 // Given a PGN, this will return a pgn stripped of all annotations and variations
@@ -182,7 +321,7 @@ pgnViewerModule.prototype.getMoves = function(game) {
 
 	this.chessBoard = new ChessBoard();
 
-	moves = this.chessBoard.validate(moves, fen);
+	this.chessBoard.setMoves(moves, fen);
 
 	return moves;
 }
@@ -259,24 +398,26 @@ pgnViewerModule.prototype.convertStringToMoves = function(sMoves) {
 				plyCount: arguments[3] * 2 - 1,
 				moveNumber: parseInt(arguments[3]),
 				algebraic: arguments[4],
-				NAG: arguments[5],
-				commentAfter: (arguments[6] || "").trim(),
+				check: arguments[5],
+				NAG: arguments[6],
+				commentAfter: (arguments[7] || "").trim(),
 				variations: [],
 				player: 'w'
 			});
 		}
 
 		// get the details for the black move
-		if(arguments[7])
+		if(arguments[8])
 		{
 			moves.push({
-				fullText: arguments[7],
-				plyCount: (arguments[9] || arguments[3]) * 2,
-				moveNumber: parseInt(arguments[9] || arguments[3]),
-				commentBefore: (arguments[8] || "").trim(),
-				algebraic: arguments[10],
-				NAG: arguments[11],
-				commentAfter: (arguments[12] || "").trim(),
+				fullText: arguments[8],
+				plyCount: (arguments[10] || arguments[3]) * 2,
+				moveNumber: parseInt(arguments[10] || arguments[3]),
+				commentBefore: (arguments[9] || "").trim(),
+				algebraic: arguments[11],
+				check: arguments[12],
+				NAG: arguments[13],
+				commentAfter: (arguments[14] || "").trim(),
 				variations: [],
 				player: 'b'
 			});
@@ -286,13 +427,106 @@ pgnViewerModule.prototype.convertStringToMoves = function(sMoves) {
 	return moves;
 }
 
+pgnViewerModule.prototype.diagramBorderMap = [
+	undefined, '!','"','#','$','%','&', '\'', '('
+]
+
+// Displays the chess board using USCF's diagram font
+pgnViewerModule.prototype.generateDiagram = function(board) {
+	board = board || this.chessBoard.currentPosition;
+	var type = typeof board;
+	var output = [];
+	var rank;
+	var darkSquare;
+	var i = 0;
+	var j = 0;
+	var pos;
+	var rankNumber;
+	var isDark;
+
+	// if an FEN was provided, update the position
+	if(type === 'string') {
+		board = this.parseFEN(board);
+	}
+
+	//this.flip = true;
+
+	// show the top border of the board
+	if(this.chessBoard.flip)
+		output.push('XHGFEDCBAY');
+	else
+		output.push('XABCDEFGHY');
+
+	// depending on orientation, the counter needs to go up or down
+	i = this.chessBoard.flip ? 7 : 56;
+
+	// used to determine if the squares will be dark or light
+	darkSquare = this.flip;
+
+	while(i < 64 && i >= 0) {
+		j = 0;
+		rank = [];
+		rankNumber = this.chessBoard.flip ? (i+1)/8 : (i+8)/8;
+
+		// add the left border
+		rank.push(rankNumber);
+
+		while(j < 8) {
+
+			// determine if the square should be dark or light
+			isDark = (darkSquare && pos%2 !== 0) || (!darkSquare && (pos)%2 === 0)
+
+			// calculate the current board position
+			pos = this.chessBoard.flip ? i-j : i+j;
+
+			// if the square is occupied
+			if(board.squares[pos]) {
+				if(isDark) {
+					rank.push(board.squares[pos].blackSquare);
+				}
+				rank.push(board.squares[pos].diagram);
+			}
+
+			// display an empty square
+			else {
+				if(isDark)
+					rank.push('+');
+				else
+					rank.push('-');
+			}
+			
+			j++; // continue across the rank
+		}
+
+		// add the right border
+		rank.push(this.diagramBorderMap[rankNumber]);
+
+		i+= this.chessBoard.flip ? 8 : -8;
+
+		// join the rank text
+		output.push(rank.join(''));
+
+		// switch the darksquare marker
+		darkSquare = !darkSquare;
+	}
+
+	// show the bottom border of the board
+	if(this.chessBoard.flip)
+		output.push('xhgfedcbay');
+	else
+		output.push('xabcdefghy');
+
+	// join all the text required for the diagram
+	return output.join('<br />');
+};
+
 // Returns a constructed regex necessary for parsing chess moves
 pgnViewerModule.prototype.moveRegex = function() {
 	if(!this._moveRegex)
 	{
 		// the regex for finding chess moves
 		// ***** TO DO ***** UPDATE TO SUPPORT CASTLE WITH ZEROES
-		var moveRegex = '(?:([PNBRQK]?[a-h]?[1-8]?x?[a-h][1-8](?:\\=[PNBRQK])?|O(?:-?O){1,2})[\\+#]?)(?:\\s*(?:[\\!\\?]+|\\s*(\\$\\d+)))?\\s*'
+		var moveRegex = '(?:([PNBRQK]?[a-h]?[1-8]?x?[a-h][1-8](?:\\=[PNBRQK])?|(?:O|0)(?:-?(?:O|0)){1,2})([\\+#])?)(?:\\s*(?:[\\!\\?]+|\\s*(\\$\\d+)))?\\s*'
 		// optional comments (between curly braces)
 		var commentRegex = '(?:\\s*\\{([^\}]*)\\})?';
 
