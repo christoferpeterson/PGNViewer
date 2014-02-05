@@ -19,6 +19,7 @@ pgnViewerModule.prototype.initModule = function () {
 	this.currentGame;
 	this.currentPosition = [];
 	this.flip = false;
+	this.hideAnnotations = false;
 
 	// build the module
 	this.buildModule();
@@ -31,16 +32,23 @@ pgnViewerModule.prototype.initModule = function () {
 };
 
 pgnViewerModule.prototype.action_download = function($el, val, e) {
-	console.info(this.currentGame);
+	var content;
+	if(this.hideAnnotations) {
+		content = this.getPlainGame(this.currentGame);
+	}
+	else {
+		content = this.currentGame.pgn;
+	}
+
 	var a = document.createElement('a');
-	var blob = new Blob([this.currentGame.pgn], {'type':'application\/octet-stream'});
+	var blob = new Blob([content], {'type':'application\/octet-stream'});
 	a.href = window.URL.createObjectURL(blob);
 	a.download = this.currentGame.white + ' - ' + this.currentGame.black + '.pgn';
 	a.click();
 };
 
 pgnViewerModule.prototype.action_toggleAnnotations = function($el, val, e) {
-	console.info(this);
+	this.hideAnnotations = val;
 }
 
 pgnViewerModule.prototype.action_loadGame = function($el, val, e) {
@@ -134,7 +142,7 @@ pgnViewerModule.prototype.buildControls = function() {
 	$c.append($('<button data-clickaction="end">end</button>'));
 	$c.append($('<button data-clickaction="flip">flip</button>'));
 	$c.append($('<button data-clickaction="download">get pgn</button>'))
-	//$c.append($('<label><input data-changeaction="toggleAnnotations" type="checkbox" /> Hide annotations</label>'));
+	$c.append($('<label><input data-changeaction="toggleAnnotations" type="checkbox" /> Hide annotations</label>'));
 
 	var pgn;
 	for (var i = 0; i < this.pgns.length; i++) {
@@ -344,7 +352,7 @@ pgnViewerModule.prototype.setupNotation = function(rMoves, variationNumber) {
 
 // Given a PGN, this will return a pgn stripped of all annotations and variations
 pgnViewerModule.prototype.getPlainGame = function(game) {
-	if(pgn == undefined){
+	if(game === undefined || game.pgn === undefined){
 		this.showError('Invalid PGN provided');
 	}
 
