@@ -7,7 +7,8 @@ pgnViewerModule.prototype.elementMap = {
 	'board' : 'div.board',
 	'backward': '[data-clickaction="prevMove"], [data-clickaction="start"]',
 	'forward': '[data-clickaction="nextMove"], [data-clickaction="end"]',
-	'clickMove': '[data-clickaction="clickMove"]'
+	'clickMove': '[data-clickaction="clickMove"]',
+	'comments': 'div.comments'
 };
 
 pgnViewerModule.prototype.initModule = function () {
@@ -28,6 +29,19 @@ pgnViewerModule.prototype.initModule = function () {
 	// get the starting position
 	this.updateBoard(this.chessBoard.startingPosition);
 };
+
+pgnViewerModule.prototype.action_download = function($el, val, e) {
+	console.info(this.currentGame);
+	var a = document.createElement('a');
+	var blob = new Blob([this.currentGame.pgn], {'type':'application\/octet-stream'});
+	a.href = window.URL.createObjectURL(blob);
+	a.download = this.currentGame.white + ' - ' + this.currentGame.black + '.pgn';
+	a.click();
+};
+
+pgnViewerModule.prototype.action_toggleAnnotations = function($el, val, e) {
+	console.info(this);
+}
 
 pgnViewerModule.prototype.action_loadGame = function($el, val, e) {
 	this.loadGame(val);
@@ -87,6 +101,7 @@ pgnViewerModule.prototype.buildModule = function() {
 	// load in the PGNs from the dom
 	this.loadPGNs();
 
+	var $boardWrapper = $('<div class="boardWrapper"></div>');
 	var $board = $('<div class="board"></div>');
 	var $notationWindow = $('<div class="notationWindow"></div>');
 	var $comments = $('<div class="comments"></div>');
@@ -105,9 +120,9 @@ pgnViewerModule.prototype.buildModule = function() {
 	b.push('xabcdefghy');
 
 	$board.html(b.join('<br />\r\n'));
+	$boardWrapper.append($board, $controls);
 
-	
-	this.$module.append($board, $notationWindow, $comments, $controls);
+	this.$module.append($boardWrapper, $notationWindow, $comments);
 };
 pgnViewerModule.prototype.buildControls = function() {
 	var $c = $('<div class="controls"></div>');
@@ -118,6 +133,8 @@ pgnViewerModule.prototype.buildControls = function() {
 	$c.append($('<button data-clickaction="nextMove">next</button>'));
 	$c.append($('<button data-clickaction="end">end</button>'));
 	$c.append($('<button data-clickaction="flip">flip</button>'));
+	$c.append($('<button data-clickaction="download">get pgn</button>'))
+	//$c.append($('<label><input data-changeaction="toggleAnnotations" type="checkbox" /> Hide annotations</label>'));
 
 	var pgn;
 	for (var i = 0; i < this.pgns.length; i++) {
@@ -133,7 +150,7 @@ pgnViewerModule.prototype.buildControls = function() {
 }
 
 // load a game from the list of games
-pgnViewerModule.prototype.loadGame = function(gameNumber) {
+pgnViewerModule.prototype.loadGame = function(gameNumber, noAnnotations) {
 	if(!this.pgns[gameNumber]) {
 		this.showError('Unable to locate that game.')
 		return false;
@@ -141,6 +158,7 @@ pgnViewerModule.prototype.loadGame = function(gameNumber) {
 
 	// set the current game
 	this.currentGame = this.pgns[gameNumber];
+
 	// parse the current games moves
 	this.currentGame.moves = this.pgns[gameNumber].moves = this.currentGame.moves || this.getMoves(this.currentGame);
 
@@ -150,9 +168,10 @@ pgnViewerModule.prototype.loadGame = function(gameNumber) {
 	return true;
 };
 
-pgnViewerModule.prototype.updateBoard = function(board) {
+pgnViewerModule.prototype.updateBoard = function(board, move) {
 	// get the new board
 	var diagram = this.generateDiagram(board);
+	var move = move || this.chessBoard.currentMoveObject;
 
 	// disable or enable the backward buttons
 	if(this.chessBoard.currentMove === -1)
@@ -177,6 +196,41 @@ pgnViewerModule.prototype.updateBoard = function(board) {
 
 	this.$el('notation').scrollTop(newScrollPos);
 
+	if(move && move.fullText !== undefined) {
+		var moveText = [];
+		moveText.push('<p>');
+
+		console.info(move);
+		moveText.push(move.commentBefore || 'Position after');
+		moveText.push(' ');
+
+		moveText.push('<strong>')
+		moveText.push(move.moveNumber);
+		moveText.push(move.player === 'w' ? '. ' : '... ')
+		moveText.push(move.algebraic);
+
+		if(move.check !== undefined) {
+			moveText.push(move.check);
+		}
+		if(move.NAG !== undefined) {
+			moveText.push(pgnViewerModule.NAGMap[move.NAG]);
+		}
+
+		moveText.push('</strong>')
+
+		if(move.commentAfter) {
+			moveText.push(' ');
+			moveText.push(move.commentAfter);
+		}
+
+		moveText.push('</p>');
+
+		this.$el('comments').html(moveText.join(''));
+	}
+	else {
+		this.$el('comments').empty();
+	}
+
 	// display the board on the screen
 	this.$el('board').html(diagram);
 }
@@ -188,51 +242,103 @@ pgnViewerModule.prototype.displayMoves = function() {
 // update the move window interface with the current moves
 pgnViewerModule.prototype.setupNotation = function(rMoves, variationNumber) {
 	var html = [];
-	var i = 0;
-	var j = 0;
-	var address = [];
 
-	html.push('<span class="moves">');
-	console.info(rMoves);
+	var renderMoves = function(moveArray, addressPrepend) {
+		var output = [];
+		var i = 0;
+		var j = 0;
+		var address = [];
+		var numberSet = false;
+		var whiteMove = false;
+		var blackMoveFirst = false;
 
-	while(i < rMoves.length) {
-		j = 0;
+		while(i < moveArray.length) { // loop over all the moves provided
+			numberSet = false;
+			blackMoveFirst = false;
+			j = 0;
 
-		while(j < 2) {
-			if(rMoves[i+j]) {
-				address.push(rMoves[i+j].plyCount);
+			while(j < 2) { // get the white and black moves
+				if(moveArray[i+j]) { // the actual move
+					
+					address = []; // Reset the move address
+					if(addressPrepend) {
+						// add the prepend if necessary
+						address.push(addressPrepend);
+					}
 
-				if(variationNumber) {
-					address.push(variationNumber);
-				}
+					address.push(i+j); // add the move number to the address
+					// open the clickable region
+					html.push(' <span data-clickaction="clickMove" data-actionvalue="' + address.join('.') + '">');
 
-				address.push(i+j);
-				
-				html.push(' <span data-clickaction="clickMove" data-actionvalue="' + address.join('-') + '">');
-				html.push(rMoves[i].moveNumber + '. ');
-				html.push(rMoves[i+j].algebraic + (rMoves[i+j].check || ''));
-				html.push('</span>');
-				if(rMoves[i+j].variations.length > 0) {
-					html.push('<span class="variations">');
-					for (var k = 0; k < rMoves[i+j].variations.length; k++) {
-						if(variationNumber) {
-							variationNumber += '-' + (k+1);
+					if(!numberSet) { // generate the move number
+						if(moveArray[i+j].player === 'w') {
+							whiteMove = true;
+							html.push(moveArray[i+j].moveNumber + '. '); 
 						}
 						else {
-							variationNumber = k+1;
+							blackMoveFirst = !whiteMove;
+							html.push(moveArray[i+j].moveNumber + '... ');
 						}
-						html.push(this.setupNotation(rMoves[i+j].variations[k], variationNumber));
-					};
-					html.push('</span>');
+
+						numberSet = true;
+					}
+					
+
+					moveArray[i+j].address = address.join('.');
+
+					html.push(moveArray[i+j].algebraic + (moveArray[i+j].check || '')); // add the algebraic move
+
+					if(moveArray[i+j].NAG !== undefined) {
+						html.push(pgnViewerModule.NAGMap[moveArray[i+j].NAG]);
+					}
+
+					if(moveArray[i+j].commentBefore !== '' || moveArray[i+j].commentAfter !== '') {
+						html.push('*');
+					}
+
+
+					html.push('</span>'); // close the clickable region
+
+					if(moveArray[i+j].variations.length > 0) { // use recrusion to render the variations
+						for (var k = 0; k < moveArray[i+j].variations.length; k++) {
+							html.push('<span class="variation">( '); // open the variation
+							
+							address = []; // Reset the move address
+							if(addressPrepend) {
+							// add the prepend if necessary
+								address.push(addressPrepend);
+							}
+
+							address.push(i+j); // add the move number to the address
+
+							address.push(k+1); // add the variation number to the address
+
+							// recursively render variations
+							var obj = renderMoves(moveArray[i+j].variations[k], address.join('.'))
+							moveArray[i+j].variations[k] = obj.moves;
+							html.push(obj.html);
+
+							html.push(' )</span>'); // close the variation
+						}
+
+						numberSet = false;
+					}
 				}
+
+				// handle for when a black move is first in the move array
+				j += blackMoveFirst ? 2 : 1;
 			}
-			j++;
+			
+			// handle for when a black move is first in the move array
+			i += blackMoveFirst ? 1 : 2;
 		}
 
-		i += 2;
+		return { html: output.join(''), moves: moveArray };
 	}
-	html.push('</span>');
 
+	var obj = renderMoves(rMoves);
+	this.chessBoard.moves = obj.moves;
+	html.push(obj.html);
 	return html.join('');
 }
 
@@ -311,10 +417,11 @@ pgnViewerModule.prototype.getMoves = function(game) {
 	var pgn = game.pgn;
 	var fen = game.fen;
 
-	var variations = pgn.buildNestedObject("(", ")");
+	var variations = pgn.buildNestedObject('(', ')');
 	var moves = this.convertStringToMoves(pgn);
 
 	variations = this.convertVariationsToMoves(variations);
+
 	moves = this.mergeMovesAndVariations(moves, variations);
 
 	delete variations;
@@ -328,6 +435,7 @@ pgnViewerModule.prototype.getMoves = function(game) {
 
 // Converts nested variation strings to useable moves
 pgnViewerModule.prototype.convertVariationsToMoves = function(rVariations) {
+	var subVariations;
 	var moves = [];
 	var move;
 
@@ -335,8 +443,14 @@ pgnViewerModule.prototype.convertVariationsToMoves = function(rVariations) {
 		move = this.convertStringToMoves(rVariations[i].text);
 
 		if(rVariations[i].sub) {
+			subVariations = [];
+
 			for (var j = 0; j < rVariations[i].sub.length; j++) {
-				move.variations = this.convertVariationsToMoves(rVariations[i].sub[j]);
+				subVariations.push(this.convertVariationsToMoves(rVariations[i].sub));
+			};
+
+			for (var k = 0; k < subVariations.length; k++) {
+				move = this.mergeMovesAndVariations(move, subVariations[k]);
 			};
 		}
 
@@ -539,7 +653,7 @@ pgnViewerModule.prototype.moveRegex = function() {
 				  + 	'((?:\\s*)?\\d+)\\.\\s*' // Move number and spaces
 				  + 	moveRegex // move
 				  + 	commentRegex // comment after move
-				  + ')'
+				  + ')?'
 				  + '(' // capture full text associated with black's move
 				  + 	commentRegex // comment before move
 				  + 	'(?:(?:(?:\\s*)?(\\d+))\\.{0,3}\\s*)?' // optional move number indicator on black's move
@@ -551,4 +665,27 @@ pgnViewerModule.prototype.moveRegex = function() {
 		this._moveRegex = regex;
 	}
 	return this._moveRegex;
+}
+
+pgnViewerModule.NAGMap = {
+	'$0': '', // null annotation
+	'$1': '!', // good move
+	'$2': '?', // poor move or mistake
+	'$3': '!!', // very good or brilliant move
+	'$4': '??', // very poor move or blunder
+	'$5': '!?', // speculative or interesting move
+	'$6': '?!', // questionable or dubious move
+	'$7': '□', // forced move (all others lose quickly) or only move
+	'$8': '', // singular move (no reasonable alternatives)
+	'$9': '', // worst move
+	'$10': '=', // drawish position or even
+	'$11': '', // equal chances, quiet position
+	'$12': '', // equal chances, active position
+	'$13': '∞', // unclear position
+	'$14': '+/=', // White has a slight advantage
+	'$15': '=/+', // Black has a slight advantage
+	'$16': '&plusmn;', // White has a moderate advantage
+	'$17': '&#8723;', // Black has a moderate advantage
+	'$18': '&#43;&minus;', // White has a decisive advantage
+	'$19': '&minus;&#43;' // Black has a decisive advantage
 }

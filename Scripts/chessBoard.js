@@ -33,58 +33,103 @@ ChessBoard.prototype.setMoves = function(rMoves, sPosition) {
 };
 
 ChessBoard.prototype.nextMove = function() {
-	return this.jumpToMove(this.currentMove+1);
+	var type = typeof this.currentMove;
+
+	if(type === 'string') {
+		var address = this.currentMove.split('.');
+		var move = parseInt(address.pop());
+		address.push(move+1);
+		return this.jumpToMove(address.join('.'));
+	}
+	else {
+		return this.jumpToMove(this.currentMove+1);
+	}
 };
 
 ChessBoard.prototype.prevMove = function() {
-	return this.jumpToMove(this.currentMove-1);
+	var type = typeof this.currentMove;
+	if(type === 'string') {
+		var address = this.currentMove.split('.');
+		var move = parseInt(address.pop());
+		address.push(move-1);
+		return this.jumpToMove(address.join('.'));
+	}
+	else {
+		return this.jumpToMove(this.currentMove-1);
+	}
 };
 
 ChessBoard.prototype.jumpToMove = function(move) {
 	if(typeof move === 'string') {
 		var m = this.getComplexMove(move);
-		this.currentMove = move;
-		this.currentPosition = m.board;
-		return m;
+		if(m) {
+			this.currentMove = m.address;
+			this.currentPosition = m.board;
+			this.currentMoveObject = m;
+		}
+		else {
+			return false;
+		}
+	}
+	else {
+		if(move < 0) {
+			this.currentMove = -1;
+			this.currentPosition = this.startingPosition;
+			this.currentMoveObject = {};
+		}
+		
+		else if(move >= this.moves.length) {
+			this.currentMove = this.moves.length-1;
+			this.currentPosition = this.moves[this.currentMove].board;
+			this.currentMoveObject = this.moves[this.currentMove];
+		}
+		else {
+			this.currentMove = move;
+			this.currentPosition = this.moves[this.currentMove].board;
+			this.currentMoveObject = this.moves[this.currentMove];
+		}
 	}
 
-	if(move < 0) {
-		this.currentMove = -1;
-		this.currentPosition = this.startingPosition;
-		return {};
-	}
-	
-	if(move >= this.moves.length) {
-		this.currentMove = this.moves.length-1;
-		this.currentPosition = this.moves[this.currentMove].board;
-
-		return this.moves[this.currentMove];
-	}
-
-	this.currentMove = move;
-	this.currentPosition = this.moves[this.currentMove].board;
-
-	return this.moves[this.currentMove];
+	return this.currentMoveObject;
 };
 
 ChessBoard.prototype.getComplexMove = function(move) {
-	console.info(move);
+	var self = this;
 	var type = typeof move;
 
 	if(type === 'string') {
-		if(move === '0-0-0') {
+		if(move === '-1') {
 			return { board: this.startingPosition };
 		}
 
-		var getMove = function(rMoves, m, isVariation) {
-			var address = m.split('-');
-			var moveNumber = parseInt(address.shift()) - 1;
-			var variationNumber = parseInt(address.shift());
-
-			console.info(moveNumber, variationNumber, address.join('-'), isVariation);
+		if(move.split('.').length === 1) {
+			return this.jumpToMove(parseInt(move));
 		}
 
-		return getMove(this.moves, move, false);
+		var getMove = function(rMoves, m) {
+			var address = m.split('.');
+			var moveNumber = parseInt(address.shift());
+			var variationNumber = parseInt(address.shift()-1);
+			var variationMove = parseInt(address.shift());
+
+			if(variationMove === -1) {
+				return rMoves[moveNumber-1];
+			}
+			if(address.length > 0) {
+				address.unshift(variationMove);
+				return getMove(rMoves[moveNumber].variations[variationNumber], address.join('.'));
+			}
+			else {
+				if(variationMove !== -1 && variationMove < rMoves[moveNumber].variations[variationNumber].length) {
+					return rMoves[moveNumber].variations[variationNumber][variationMove];
+				}
+				else {
+					return false;
+				}
+			}
+		}
+
+		return getMove(this.moves, move);
 	}
 
 	if(type === 'number') {
@@ -114,24 +159,28 @@ ChessBoard.prototype.validate_moves = function(rMoves, board) {
 				};
 				try {
 					validMove = this.checkMove(algebraic, board, rMoves[i]);
+
+					if(validMove) {
+						rMoves[i].origin = validMove.origin;
+						rMoves[i].destination = validMove.destination;
+						rMoves[i].smith = validMove.smith;
+						rMoves[i].board = JSON.parse(JSON.stringify(validMove.board));
+
+						if(rMoves[i].variations.length > 0) {
+							var prevBoard = rMoves[i-1] === undefined ? this.startingPosition : rMoves[i-1].board;
+							for (var j = 0; j < rMoves[i].variations.length; j++) {
+								rMoves[i].variations[j] = this.validate_moves(rMoves[i].variations[j], prevBoard);
+							};
+						}
+						board = validMove.board;
+					}
+					else {
+						throw('INVALID MOVE: the move \'' + rMoves[i].fullText + '\' is illegal.');
+					}
 				}
 				catch(err) {
 					console.info(err);
 				}
-				
-				rMoves[i].origin = validMove.origin;
-				rMoves[i].destination = validMove.destination;
-				rMoves[i].smith = validMove.smith;
-				rMoves[i].board = JSON.parse(JSON.stringify(validMove.board));
-
-				if(rMoves[i].variations.length > 0) {
-					var prevBoard = rMoves[i-1] === undefined ? this.startingPosition : rMoves[i-1].board;
-					for (var j = 0; j < rMoves[i].variations.length; j++) {
-						rMoves[i].variations[j] = this.validate_moves(rMoves[i].variations[j], prevBoard);
-					};
-				}
-
-				board = validMove.board;
 
 			}, this));
 		};
@@ -206,14 +255,19 @@ ChessBoard.prototype.checkMove = function(oMove, board, originalMove) {
 		var vectors;
 		var comparePiece;
 
-		var calculatePossibleOrigins = function(piece, vectorSet) {
+		var calculatePossibleOrigins = function(piece, vectorSet, cannotJump) {
 			var poss = [];
 			var os;
 
 			for (var i = 0; i < vectorSet.length; i++) {
 				os = self.to8(square - vectorSet[i]);
-				if(board.squares[os] && board.squares[os].pieceType === piece) {
-					poss.push(os);
+				if(board.squares[os]) {
+					if(board.squares[os].pieceType === piece)
+						poss.push(os);
+					else {
+						if(cannotJump)
+							break;
+					}
 				}
 			};
 
@@ -254,7 +308,7 @@ ChessBoard.prototype.checkMove = function(oMove, board, originalMove) {
 				}
 
 				for (var set = 0; set < this.pieceVector[oMove.player][comparePiece].length; set++) {
-					possibleSquares = possibleSquares.concat(calculatePossibleOrigins(comparePiece, this.pieceVector[oMove.player][comparePiece][set]));
+					possibleSquares = possibleSquares.concat(calculatePossibleOrigins(comparePiece, this.pieceVector[oMove.player][comparePiece][set], true));
 				};
 			}
 		}
@@ -265,6 +319,10 @@ ChessBoard.prototype.checkMove = function(oMove, board, originalMove) {
 
 		if(possibleSquares.length > 0)
 		{
+			possibleSquares = possibleSquares.filter(function(elem, pos) {
+				return possibleSquares.indexOf(elem) === pos;
+			});
+
 			if(possibleSquares.length === 1) {
 				startSquare = possibleSquares[0];
 			}
@@ -276,19 +334,25 @@ ChessBoard.prototype.checkMove = function(oMove, board, originalMove) {
 					}
 				};
 
-				if(matches.length == 1) {
+				if(matches.length === 0) {
+					throw ('INVALID MOVE: On move ' + originalMove.moveNumber + ' for ' + (isWhite ? 'white' : 'black') + ' there are no ' + comparePiece + '\'s that can move to ' + this.algebraicMap[endSquare]);
+				}
+
+				else if(matches.length === 1) {
 					startSquare = matches[0]
 				}
 				else {
-					throw('AMBIGUOUS MOVE: On move ' + originalMove.moveNumber + ' for ' + (isWhite ? 'white' : 'black') + ' there are two or more pieces that can move to ' + this.algebraicMap[endSquare])
+					throw('AMBIGUOUS MOVE (underspecific indicator): On move ' + originalMove.moveNumber + ' for ' + (isWhite ? 'white' : 'black') + ' there are two or more pieces that can move to ' + this.algebraicMap[endSquare])
 				}
 			}
 			else {
-				throw('AMBIGUOUS MOVE: On move ' + originalMove.moveNumber + ' for ' + (isWhite ? 'white' : 'black') + ' there are two or more pieces that can move to ' + this.algebraicMap[endSquare])
+				console.info(possibleSquares);
+				throw('AMBIGUOUS MOVE (no indicator): On move ' + originalMove.moveNumber + ' for ' + (isWhite ? 'white' : 'black') + ' there are two or more pieces that can move to ' + this.algebraicMap[endSquare])
 			}
 		}
 		else {
-			throw ('INVALID MOVE: On move ' + originalMove.moveNumber + ' for ' + (isWhite ? 'white' : 'black') + ' there are no ' + comparePiece + '\'s that can move to ' + this.algebraicMap[endSquare]);
+			this.displayBoard(board);
+			throw ('INVALID MOVE (no possible squares): On move ' + originalMove.moveNumber + ' for ' + (isWhite ? 'white' : 'black') + ' there are no ' + comparePiece + '\'s that can move to ' + this.algebraicMap[endSquare]);
 		}
 		
 		board = this.movePiece(startSquare, endSquare, board);
@@ -308,8 +372,9 @@ ChessBoard.prototype.convertBoardToFEN = function(board) {
 }
 
 ChessBoard.prototype.movePiece = function(start, end, board) {
-	if(!start || !end || !board || !board.squares) {
-		throw('not enough info to move a piece start: ' + start + ', end: ' + end + ', board: ' + board);
+	if(start === undefined || end === undefined || board === undefined || board.squares === undefined) {
+		console.info('start', start, 'end', end, 'board', board)
+		throw('not enough info to move a piece start: ' + start + ', end: ' + end);
 	}
 
 	if(board.squares[start]) {
@@ -602,7 +667,7 @@ ChessBoard.prototype.pieceVector = {
 	},
 	w: {
 		// white rook
-		'♖': [[-15,-30,-45,-60,-75,-90,-105],[1,2,3,4,5,6,7],[15, 30, 45,60,75,90,105],[-1,-2,-3,-4,-5,-6,-7]],
+		'♖': [[-15,-30,-45,-60,-75,-90,-105],[1,2,3,4,5,6,7],[15,30,45,60,75,90,105],[-1,-2,-3,-4,-5,-6,-7]],
 		// white knight
 		'♘': [-31,-29,-17,-13,13,17,29,31],
 		// white bishop

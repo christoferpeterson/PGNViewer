@@ -123,6 +123,6 @@ String.prototype.buildNestedObject = function(start, end) {
 			i++;
 		}
 	}
-
+	
 	return output;
 }

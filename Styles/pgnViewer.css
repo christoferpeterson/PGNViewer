@@ -5,50 +5,72 @@
 		 url('../fonts/DiaTTUSA.ttf');
 }
 
+strong
+{
+	font-weight: bold;
+}
+
+.pgnViewerModule {
+	padding: 10px;
+}
+
 .board {
-	font-size: 20pt;
 	font-family: 'chessBoard';
 	white-space: nowrap;
 	width: 10em;
 	height: 10em;
+}
+
+label input {
+	position: relative;
+	top: 2px;
+}
+
+.boardWrapper {
+	font-size: 20pt;
 	float: left;
+	width: 10em;
 }
 
 .notationWindow {
 	float: left;
 	height: 15em;
-	width: 15em;
+	width: 17em;
 	margin: 1em;
 	overflow-y: auto;
+	font-weight: bold;
 }
 
 .comments { 
 	clear: both;
-	float: left;
-	width: 15em;
-	height: 15em;
+	width: 30em;
 }
 
 .controls {
-	float: left;
-	width: 15em;
+	font-size: 10pt;
+	text-align: center;
+	clear: both;
+	margin: 0 auto;
 }
 
-.variations {
+.variation {
 	font-style: italic;
 	font-weight: normal;
 	margin: 0 0 3px;
+	color: blue;
 }
 
-.moves {
-	display: block;
+.variation .variation {
+	color: red;
 }
 
-.moves .moves {
-	margin-left: 1em;
+.variation .variation .variation {
+	color: purple;
 }
 
-
+.variation [data-clickaction="clickMove"] {
+	font-weight: normal;
+}
 
 [data-clickaction] {
 	cursor: pointer;
@@ -57,10 +79,8 @@
 
 [data-clickaction="clickMove"] {
 	display: inline-block;
-	padding: 2px 0;
-	margin-left: 3px;
+	padding: 2px 3px;
 }
 [data-clickaction="clickMove"].active {
 	background: #ccc;
-	font-weight: bold;
 }
