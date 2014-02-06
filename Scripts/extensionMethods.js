@@ -50,7 +50,9 @@ String.prototype.nestedExclude = function(start, end) {
 			}
 			else {
 				if(!((prev == start || s[i+1] == end) && s[i] == " ")) {
-					groups[groups.length-1][count-1] += s[i];
+					if(groups !== undefined) {
+						groups[groups.length-1][count-1] += s[i];
+					}
 				}
 			}
 		}

@@ -94,7 +94,7 @@ Module.prototype.handleAction = function (e) {
 	}
 
 	// Cancel event for non-input elements (like a link's href)
-	if (tag != 'input') {
+	if (tag !== 'input' && type !== 'keydown') {
 		e.preventDefault();
 	}
 

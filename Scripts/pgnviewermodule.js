@@ -3,13 +3,15 @@ var pgnViewerModule = function() {};
 pgnViewerModule.prototype = new Module();
 
 pgnViewerModule.prototype.elementMap = {
+	'container': 'div.container',
 	'notation' : 'div.notationWindow',
 	'board' : 'div.board',
 	'backward': '[data-clickaction="prevMove"], [data-clickaction="start"]',
 	'forward': '[data-clickaction="nextMove"], [data-clickaction="end"]',
 	'clickMove': '[data-clickaction="clickMove"]',
 	'comments': 'div.comments',
-	'fenInput': 'input[name="fen"]'
+	'fenInput': 'input[name="fen"]',
+	'details': 'div.details'
 };
 
 pgnViewerModule.prototype.initModule = function () {
@@ -22,14 +24,16 @@ pgnViewerModule.prototype.initModule = function () {
 	this.flip = false;
 	this.hideAnnotations = false;
 
+	var moduleCallback = function() {
+		// load the first game
+		this.loadGame(0);
+
+		// get the starting position
+		this.updateBoard(this.chessBoard.startingPosition);
+	};
+
 	// build the module
-	this.buildModule();
-
-	// load the first game
-	this.loadGame(0);
-
-	// get the starting position
-	this.updateBoard(this.chessBoard.startingPosition);
+	this.buildModule($.proxy(moduleCallback, this));
 };
 
 pgnViewerModule.prototype.action_download = function($el, val, e) {
@@ -48,9 +52,17 @@ pgnViewerModule.prototype.action_download = function($el, val, e) {
 	a.click();
 };
 
+pgnViewerModule.prototype.action_handleKeyDown = function($el, val, e) {
+	switch(e.keyCode) {
+		case 37: return this.loadPrevMove(); 
+		case 39: return this.loadNextMove(); 
+		default: return;
+	}
+};
+
 pgnViewerModule.prototype.action_toggleAnnotations = function($el, val, e) {
 	this.hideAnnotations = val;
-}
+};
 
 pgnViewerModule.prototype.action_loadGame = function($el, val, e) {
 	this.loadGame(val);
@@ -66,11 +78,7 @@ pgnViewerModule.prototype.action_nextMove = function($el, val, e) {
 };
 
 pgnViewerModule.prototype.action_prevMove = function($el, val, e) {
-	var move = this.chessBoard.prevMove();
-
-	if(move) {
-		this.updateBoard();
-	}
+	this.loadPrevMove();
 };
 
 pgnViewerModule.prototype.action_start = function($el, val, e) {
@@ -105,35 +113,50 @@ pgnViewerModule.prototype.loadNextMove = function() {
 	}
 };
 
+pgnViewerModule.prototype.loadPrevMove = function() {
+	var move = this.chessBoard.prevMove();
 
-pgnViewerModule.prototype.buildModule = function() {
+	if(move) {
+		this.updateBoard();
+	}
+};
+
+
+pgnViewerModule.prototype.buildModule = function(callback) {
+	var buildModule = function() {
+		var $container = $('<div class="container" data-keydownaction="handleKeyDown" tabindex="0"></div>');
+		var $details = $('<div class="details"></div>')
+		var $boardWrapper = $('<div class="boardWrapper"></div>');
+		var $board = $('<div class="board"></div>');
+		var $notationWrapper = $('<div class="notationWrapper"></div>');
+		var $notationWindow = $('<div class="notationWindow"></div>');
+		var $comments = $('<div class="comments"></div>');
+		var $controls = this.buildControls();
+
+		// draw the basic starting position
+		var b = [];
+		b.push('XABCDEFGHY');
+		b.push('8-+-+-+-+(');
+		b.push('7+-+-+-+-\'');
+		b.push('6-+-+-+-+&');
+		b.push('5+-+-+-+-%');
+		b.push('4-+-+-+-+$');
+		b.push('3+-+-+-+-#');
+		b.push('2-+-+-+-+"');
+		b.push('1+-+-+-+-!');
+		b.push('xabcdefghy');
+
+		$board.html(b.join('<br />\r\n'));
+		$boardWrapper.append($board, $controls);
+		$notationWrapper.append($notationWindow, $('<label>FEN: <input type="text" name="fen" /></label>'))
+		$container.append($details, $boardWrapper, $notationWrapper, $comments);
+		this.$module.append($container);
+
+		callback();
+	}
+
 	// load in the PGNs from the dom
-	this.loadPGNs();
-
-	var $boardWrapper = $('<div class="boardWrapper"></div>');
-	var $board = $('<div class="board"></div>');
-	var $notationWrapper = $('<div class="notationWrapper"></div>');
-	var $notationWindow = $('<div class="notationWindow"></div>');
-	var $comments = $('<div class="comments"></div>');
-	var $controls = this.buildControls();
-
-	var b = [];
-	b.push('XABCDEFGHY');
-	b.push('8-+-+-+-+(');
-	b.push('7+-+-+-+-\'');
-	b.push('6-+-+-+-+&');
-	b.push('5+-+-+-+-%');
-	b.push('4-+-+-+-+$');
-	b.push('3+-+-+-+-#');
-	b.push('2-+-+-+-+"');
-	b.push('1+-+-+-+-!');
-	b.push('xabcdefghy');
-
-	$board.html(b.join('<br />\r\n'));
-	$boardWrapper.append($board, $controls);
-	$notationWrapper.append($notationWindow, $('<label>FEN: <input type="text" name="fen" /></label>'))
-
-	this.$module.append($boardWrapper, $notationWrapper, $comments);
+	this.loadPGNs($.proxy(buildModule, this));
 };
 pgnViewerModule.prototype.buildControls = function() {
 	var $c = $('<div class="controls"></div>');
@@ -150,7 +173,7 @@ pgnViewerModule.prototype.buildControls = function() {
 	var pgn;
 	for (var i = 0; i < this.pgns.length; i++) {
 		pgn = this.pgns[i];
-		$pgnSelect.append($('<option value="' + i + '">' + pgn.white + ' (' + pgn.whiteelo + ') - ' + pgn.black + ' (' + pgn.blackelo + ')</option>'))
+		$pgnSelect.append($('<option value="' + i + '">' + pgn.event + '</option>'))
 	};
 
 	if(this.pgns.length > 1) {
@@ -162,7 +185,7 @@ pgnViewerModule.prototype.buildControls = function() {
 
 // load a game from the list of games
 pgnViewerModule.prototype.loadGame = function(gameNumber, noAnnotations) {
-	if(!this.pgns[gameNumber]) {
+	if(this.pgns[gameNumber] === undefined) {
 		this.showError('Unable to locate that game.')
 		return false;
 	}
@@ -170,13 +193,69 @@ pgnViewerModule.prototype.loadGame = function(gameNumber, noAnnotations) {
 	// set the current game
 	this.currentGame = this.pgns[gameNumber];
 
-	// parse the current games moves
 	this.currentGame.moves = this.pgns[gameNumber].moves = this.currentGame.moves || this.getMoves(this.currentGame);
+	this.chessBoard.startingPosition = this.chessBoard.parseFEN(this.currentGame.fen || this.startingFEN);
+	this.chessBoard.moves = this.currentGame.moves;
 
 	// display the move interface
+	this.updateGameDetails();
 	this.displayMoves();
+	this.chessBoard.jumpToMove(-1);
+	this.updateBoard();
 
 	return true;
+};
+
+pgnViewerModule.prototype.updateGameDetails = function() {
+	var items = [];
+	var $item;
+
+	var text = [];
+
+	$item = $('<h2></h2>');
+
+	text.push(this.currentGame.white || 'NN');
+	if(this.currentGame.whiteelo !== undefined)
+		text.push('(' + this.currentGame.whiteelo + ')')
+	text.push('-')
+	text.push(this.currentGame.black || 'NN')
+	if(this.currentGame.blackelo !== undefined)
+		text.push('(' + this.currentGame.blackelo + ')');
+
+	$item.html(text.join(' '));
+	items.push($item);
+	text = [];
+
+	if(this.currentGame.event !== undefined) {
+		$item = $('<h3></h3>');
+		if(this.currentGame.round !== undefined) {
+			text.push('Round');
+			text.push(this.currentGame.round);
+			text.push('of');
+		}
+
+		text.push(this.currentGame.event);
+
+		if(this.currentGame.eventdate !== undefined) {
+			text.push('[');
+			text.push(this.currentGame.eventdate);
+			text.push(']');
+		}
+
+		$item.html(text.join(' '));
+		text = [];
+		items.push($item);
+	}
+
+	if(this.currentGame.date !== undefined) {
+		$item = $('<h4></h4>')
+		$item.html(this.currentGame.date);
+		items.push($item);
+	}
+
+
+	this.$el('details').empty();
+	this.$el('details').append(items);
 };
 
 pgnViewerModule.prototype.updateBoard = function(board, move) {
@@ -254,11 +333,13 @@ pgnViewerModule.prototype.updateBoard = function(board, move) {
 
 pgnViewerModule.prototype.displayMoves = function() {
 	this.$el('notation').html(this.setupNotation(this.chessBoard.moves));
+	this.$el('clickMove', true);
 }
 
 // update the move window interface with the current moves
 pgnViewerModule.prototype.setupNotation = function(rMoves, variationNumber) {
 	var html = [];
+	var self = this;
 
 	var renderMoves = function(moveArray, addressPrepend) {
 		var output = [];
@@ -310,7 +391,7 @@ pgnViewerModule.prototype.setupNotation = function(rMoves, variationNumber) {
 					}
 
 					if(moveArray[i+j].commentBefore !== '' || moveArray[i+j].commentAfter !== '') {
-						html.push('*');
+						html.push('<sup>c</sup>');
 					}
 
 
@@ -356,7 +437,7 @@ pgnViewerModule.prototype.setupNotation = function(rMoves, variationNumber) {
 	var obj = renderMoves(rMoves);
 	this.chessBoard.moves = obj.moves;
 	html.push(obj.html);
-	return html.join('');
+	return html.join('') + '<span class="result">'+ this.currentGame.result + '</span>';
 }
 
 // Given a PGN, this will return a pgn stripped of all annotations and variations
@@ -378,39 +459,54 @@ pgnViewerModule.prototype.getPlainGame = function(game) {
 };
 
 // Gram the PGNs from various locations, either from the DOM or a file
-pgnViewerModule.prototype.loadPGNs = function() {
-	var pgnString = "";
-	if(this.$module.data('pgn')) {
-		pgnString += " " + this.$module.data('pgn');
+pgnViewerModule.prototype.loadPGNs = function(callback) {
+	var pgnString = '';
+	var self = this;
+
+	var buildPGNs = function(response) {
+		pgnString += response;
+
+		if(self.$module.data('pgn')) {
+			pgnString += ' ' + self.$module.data('pgn');
+		}
+
+		// separate the PGNs by their result
+		// search for 1-0, 0-1, 1/2-1/2, ½\-½, or * but exclude any that fall between quotes or curly braces
+		var regex = /(1\-0|0\-1|1\/2\-1\/2|½\-½|\*)(?=(?:[^{]*{[^}]*})*[^}]*$)(?=(?:[^"]*"[^"]*")*[^"]*$)/ig;
+		var pgnArray = pgnString.split(regex);
+
+		// remove empty values
+		pgnArray.clean('');
+		pgnArray.clean(' ');
+		// remove undefined values
+		pgnArray.clean(undefined);
+
+		// combine the pgn with the separated result to get a complete pgn
+		var count = 0;
+		for (var i = 0; i < pgnArray.length; i++) {
+			self.pgns[count] = self.buildGameFromPGN((pgnArray[i] + pgnArray[i+1]).trim());
+			count++;
+			i++;
+		};
+		// remove the uncessary pgnArray
+		delete pgnArray;
+
+		if(self.pgns.length === 0)
+		{
+			self.showError('No valid PGNs found.');
+		}
+
+		callback();
 	}
+
 	if(this.$module.data('pgn-file')) {
-		// Use AJAX to get the listed file
+		$.ajax({
+			url: this.$module.data('pgn-file'),
+			success: buildPGNs
+		});
 	}
-
-	// separate the PGNs by their result
-	// search for 1-0, 0-1, 1/2-1/2, ½\-½, or * but exclude any that fall between quotes or curly braces
-	var regex = /(1\-0|0\-1|1\/2\-1\/2|½\-½\*)(?=(?:[^{]*{[^}]*})*[^}]*$)(?=(?:[^"]*"[^"]*")*[^"]*$)/ig;
-	var pgnArray = pgnString.split(regex);
-	
-	// remove empty values
-	pgnArray.clean('');
-	pgnArray.clean(' ');
-	// remove undefined values
-	pgnArray.clean(undefined);
-
-	// combine the pgn with the separated result to get a complete pgn
-	var count = 0;
-	for (var i = 0; i < pgnArray.length; i++) {
-		this.pgns[count] = this.buildGameFromPGN((pgnArray[i] + pgnArray[i+1]).trim());
-		count++;
-		i++;
-	};
-	// remove the uncessary pgnArray
-	delete pgnArray;
-
-	if(this.pgns.length === 0)
-	{
-		this.showError('No valid PGNs found.');
+	else {
+		buildPGNs();
 	}
 };
 
@@ -509,7 +605,7 @@ pgnViewerModule.prototype.displayBoard = function() {
 
 // Display an error message
 pgnViewerModule.prototype.showError = function(message) {
-	alert('PGN Viewer Error: ' + message)
+	console.info('PGN Viewer Error: ' + message)
 }
 
 

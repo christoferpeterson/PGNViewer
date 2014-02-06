@@ -140,7 +140,6 @@ ChessBoard.prototype.getComplexMove = function(move) {
 ChessBoard.moveRegex = /(?:(?:([PNBRQK])?([a-h]?[1-8]?)?(x)?([a-h][1-8])(?:\=([PNBRQ]))?)|(O(?:-?O){1,2})[\+#]?)/gi;
 ChessBoard.prototype.validate_moves = function(rMoves, board) {
 	if(rMoves) {
-		// ***** TO DO ***** UPDATE TO SUPPORT CASTLE WITH ZEROES
 		var algebraic;
 		var validMove;
 		var board = JSON.parse(JSON.stringify(board || this.startingPosition));
@@ -157,7 +156,7 @@ ChessBoard.prototype.validate_moves = function(rMoves, board) {
 					check: arguments[7],
 					player: rMoves[i].player
 				};
-				try {
+				// try {
 					validMove = this.checkMove(algebraic, board, rMoves[i]);
 
 					if(validMove) {
@@ -181,10 +180,10 @@ ChessBoard.prototype.validate_moves = function(rMoves, board) {
 					else {
 						throw('INVALID MOVE: the move \'' + rMoves[i].fullText + '\' is illegal.');
 					}
-				}
-				catch(err) {
-					console.info(err);
-				}
+				// }
+				// catch(err) {
+				// 	console.info(err);
+				// }
 
 			}, this));
 		};
@@ -203,7 +202,8 @@ ChessBoard.prototype.validate_moves = function(rMoves, board) {
 		promotionPiece: What the piece turned into,
 		castle: castled
 	}
-	***** TO DO ***** SUPPORT CAPTURES, CASTLE RULES, SUPPORT PROMOTIONS
+	***** TO DO ***** SUPPORT IN-CHECK RULES
+	done: promotion, captures, en passant, castling, normal moves
 */
 ChessBoard.prototype.checkMove = function(oMove, board, originalMove) {
 	if(!oMove || !board ) {
@@ -216,39 +216,75 @@ ChessBoard.prototype.checkMove = function(oMove, board, originalMove) {
 	oMove.player = (oMove.player || 'w').toLowerCase();
 	isWhite = oMove.player === 'w';
 
-	if(oMove.castle)
+	if(oMove.castle) {
 		oMove.castle = oMove.castle.toLowerCase();
+	}
 
-	//console.info('--', oMove.fullText, '--');
-	if(oMove.castle)
+	// if the move is a castle
+	if(oMove.castle !== undefined && oMove.castle !== null)
 	{
-		var originalKingSquare = isWhite ? 4 : 60;
+		var originalKingSquare = isWhite ? this.squareMap['e1'] : this.squareMap['e8'];
 		var originalRookSquare;
-
 		var finalKingSquare;
 		var finalRookSquare;
-
 		var checkSquares;
 
 		oMove.castle = oMove.castle.toLowerCase();
+
+		// castled queenside
 		if(oMove.castle === 'o-o-o' || oMove.castle === '0-0-0')
 		{
-			originalRookSquare = isWhite ? 0 : 56;
-			finalKingSquare = isWhite ? 2 : 58;
-			finalRookSquare = isWhite ? 3 : 59;
-			checkSquares = isWhite ? [2, 3, 4] : [58, 59, 60];
+			// verify the player has castle rights
+			if(isWhite && !board.wCastleQueenside) {
+				throw('INVALID MOVE: On move ' + originalMove.moveNumber + ' white does not have privledges to castle queenside.');
+			}
+			else if(!isWhite && !board.bCastleQueenside) {
+				throw('INVALID MOVE: On move ' + originalMove.moveNumber + ' black does not have privledges to castle queenside.');
+			}
+
+			// set the required squares
+			originalRookSquare = isWhite ? this.squareMap['a1'] : this.squareMap['a8'];
+			finalKingSquare = isWhite ? this.squareMap['c1'] : this.squareMap['c8'];
+			finalRookSquare = isWhite ? this.squareMap['d1'] : this.squareMap['d8'];
+			checkSquares = isWhite 
+				? [this.squareMap['c1'], this.squareMap['d1'], this.squareMap['e1']] 
+				: [this.squareMap['c8'], this.squareMap['d8'], this.squareMap['e8']];
 		}
-		else if(oMove.castle === 'o-o' || oMove.castle === '0-0-0')
+
+		// castled kingside
+		else if(oMove.castle === 'o-o' || oMove.castle === '0-0')
 		{
-			originalRookSquare = isWhite ? 7 : 63;
-			finalRookSquare = isWhite ? 5 : 61;
-			finalKingSquare = isWhite ? 6 : 62;
-			checkSquares = isWhite ? [4,5,6] : [60, 61, 62];
+			// verify the player has castle rights
+			if(isWhite && !board.wCastleKingside) {
+				throw('INVALID MOVE: On move ' + originalMove.moveNumber + ' white does not have privledges to castle kingside.');
+			}
+			else if(!isWhite && !board.bCastleKingside) {
+				throw('INVALID MOVE: On move ' + originalMove.moveNumber + ' black does not have privledges to castle kingside.');
+			}
+
+			// set the required squares
+			originalRookSquare = isWhite ? this.squareMap['h1'] : this.squareMap['h8'];
+			finalRookSquare = isWhite ? this.squareMap['f1'] : this.squareMap['f8'];
+			finalKingSquare = isWhite ? this.squareMap['g1'] : this.squareMap['g8'];
+			checkSquares = isWhite 
+				? [this.squareMap['e1'],this.squareMap['f1'],this.squareMap['g1']] 
+				: [this.squareMap['e8'],this.squareMap['f8'],this.squareMap['g8']];
 		}
 
 		board = this.movePiece(originalKingSquare, finalKingSquare, board);
 		board = this.movePiece(originalRookSquare, finalRookSquare, board);
+
+		if(isWhite) { // remove castling rights since white caslted
+			board.wCastleKingside = false;
+			board.wCastleQueenside = false;
+		}
+		else { // remove castling rights since black caslted
+			board.bCastleKingside = false;
+			board.bCastleQueenside = false;
+		}
 	}
+
+	// the move was not castling
 	else
 	{
 		var possibleSquares = [];
@@ -264,36 +300,51 @@ ChessBoard.prototype.checkMove = function(oMove, board, originalMove) {
 			var os;
 
 			for (var i = 0; i < vectorSet.length; i++) {
+				// pawns can only move one square on the first move
+				if(piece === '♙' && !oMove.isCapture && i === 1 && Math.floor((square - vectorSet[i])/15) !== 1) {
+					break;
+				}
+
+				// pawns can only move one square on the first move
+				if(piece === '♟' && !oMove.isCapture && i === 1 && Math.floor((square - vectorSet[i])/15) !== 6) {
+					break;
+				}
+
+				// calculate the origin square
 				os = self.to8(square - vectorSet[i]);
+
 				if(board.squares[os]) {
+					// verify the origin square contains the correct piece type
 					if(board.squares[os].pieceType === piece)
+						// if os, add it to the list of possible squares
 						poss.push(os);
 					else {
+						// if jumping is not allowed, do not continue
 						if(cannotJump)
 							break;
 					}
 				}
 			};
-
 			return poss;
 		};
 
-		if(oMove.isCapture) {
-			if(square) {
-				//console.info('no piece was found to capture');
-			}
-			else {
-				//console.info('this piece got captured:', square);
-			}
-		}
 		// check pawn moves
 		if (oMove.piece === 'p'){
 			comparePiece = isWhite ? '♙' : '♟';
-			possibleSquares = calculatePossibleOrigins(comparePiece, this.pieceVector[oMove.player][comparePiece][oMove.isCapture ? 1 : 0]);
+			possibleSquares = calculatePossibleOrigins(comparePiece, this.pieceVector[oMove.player][comparePiece][oMove.isCapture ? 1 : 0], true);
 		}
 		else if(oMove.piece === 'k') {
 			comparePiece = isWhite ? '♔' : '♚';
 			possibleSquares = calculatePossibleOrigins(comparePiece, this.pieceVector[oMove.player][comparePiece][0]);
+
+			if(isWhite) {  // remove white's castling rights because king moved
+				board.wCastleKingside = false;
+				board.wCastleQueenside = false;
+			}
+			else { // remove black's castling rights because because king moved
+				board.bCastleKingside = false;
+				board.bCastleQueenside = false;
+			}
 		}
 		else {
 			if(oMove.piece === 'n') { // knight moves
@@ -332,34 +383,84 @@ ChessBoard.prototype.checkMove = function(oMove, board, originalMove) {
 			}
 			else if(oMove.indicator) {
 				for (var i = 0; i < possibleSquares.length; i++) {
-					if(this.algebraicMap[possibleSquares[i]].match(new RegExp(oMove.indicator)))
+					if((this.algebraicMap[possibleSquares[i]].match(new RegExp(oMove.indicator)) || []).length === 1)
 					{
 						matches.push(possibleSquares[i]);
 					}
 				};
 
 				if(matches.length === 0) {
+					this.displayBoard(board, oMove)
 					throw ('INVALID MOVE: On move ' + originalMove.moveNumber + ' for ' + (isWhite ? 'white' : 'black') + ' there are no ' + comparePiece + '\'s that can move to ' + this.algebraicMap[endSquare]);
 				}
-
 				else if(matches.length === 1) {
 					startSquare = matches[0]
 				}
 				else {
+					this.displayBoard(board, oMove)
 					throw('AMBIGUOUS MOVE (underspecific indicator): On move ' + originalMove.moveNumber + ' for ' + (isWhite ? 'white' : 'black') + ' there are two or more pieces that can move to ' + this.algebraicMap[endSquare])
 				}
 			}
 			else {
-				console.info(possibleSquares);
+				this.displayBoard(board, oMove);
 				throw('AMBIGUOUS MOVE (no indicator): On move ' + originalMove.moveNumber + ' for ' + (isWhite ? 'white' : 'black') + ' there are two or more pieces that can move to ' + this.algebraicMap[endSquare])
 			}
 		}
 		else {
-			this.displayBoard(board);
+			if(oMove.piece === 'b') {
+				oMove.piece = 'p';
+				return this.checkMove(oMove, board, originalMove);
+			}
+			this.displayBoard(board, oMove);
 			throw ('INVALID MOVE (no possible squares): On move ' + originalMove.moveNumber + ' for ' + (isWhite ? 'white' : 'black') + ' there are no ' + comparePiece + '\'s that can move to ' + this.algebraicMap[endSquare]);
 		}
+
+
+		if(oMove.isCapture) {
+			if(board.squares[endSquare] === undefined || board.squares[endSquare] === null) {
+				// check white en passant
+				if(comparePiece === '♙' && board.enPassant === this.algebraicMap[endSquare] && (board.squares[endSquare-8] !== undefined && board.squares[endSquare-8] !== null)) {
+					oMove.captured = board.squares[endSquare-8]; // set the captured piece
+					board.squares[endSquare-8] = undefined; // remove the captured pawn
+				}
+
+				// check black en passant
+				else if(comparePiece === '♟' && board.enPassant === this.algebraicMap[endSquare] && (board.squares[endSquare+8] !== undefined && board.squares[endSquare+8] !== null)) {
+					oMove.captured = board.squares[endSquare+8]; // set the captured piece
+					board.squares[endSquare+8] = undefined; // remove the captured pawn
+				}
+			}
+			else {
+				oMove.captured = board.squares[endSquare]; // set the captured piece
+			}
+
+			if(oMove.captured === undefined) {
+				console.info(oMove.fullText, 'no piece to capture') // alert there is no piece to capture
+			}
+		}
+
+		if(comparePiece === '♙' && endSquare - startSquare === 16) {
+			// allow en passant on the next move
+			board.enPassant = this.algebraicMap[startSquare+8];
+		}
+		else if(comparePiece === '♟' && endSquare - startSquare === -16) {
+			// allow en passant on the next move
+			board.enPassant = this.algebraicMap[startSquare-8];
+		}
+		else {
+			// disallow en passant on the next move
+			board.enPassant = '-';
+		}
+
+		// check for piece promotion
+		var promotionPiece;
+		if((oMove.promotionPiece !== undefined && oMove.promotionPiece !== null) && oMove.piece === 'p' && (oMove.promotionPiece.match(/q|r|n|b/i) || []).length === 1) {
+			promotionPiece = isWhite ? oMove.promotionPiece.toUpperCase() : oMove.promotionPiece.toLowerCase();
+			promotionPiece = this.getFENsymbol(promotionPiece);
+		}
 		
-		board = this.movePiece(startSquare, endSquare, board);
+		// move the pieces
+		board = this.movePiece(startSquare, endSquare, board, promotionPiece);
 	}
 
 	return { fen: undefined, smith: oMove.fullText, board: board, origin: startSquare, destination: endSquare };
@@ -440,14 +541,15 @@ ChessBoard.prototype.convertBoardToFEN = function(board) {
 	return fen.join(' ');
 }
 
-ChessBoard.prototype.movePiece = function(start, end, board) {
+ChessBoard.prototype.movePiece = function(start, end, board, promotionPiece) {
 	if(start === undefined || end === undefined || board === undefined || board.squares === undefined) {
 		console.info('start', start, 'end', end, 'board', board)
 		throw('not enough info to move a piece start: ' + start + ', end: ' + end);
 	}
 
 	if(board.squares[start]) {
-		board.squares[end] = board.squares[start];
+		// promote the piece if necessary
+		board.squares[end] = (promotionPiece === undefined || promotionPiece === null) ? board.squares[start] : promotionPiece;
 		board.squares[start] = undefined;
 	}
 	else {
@@ -464,6 +566,12 @@ ChessBoard.prototype.to15 = function(num) {
 
 // convert to 8x8 grid
 ChessBoard.prototype.to8 = function(num) {
+	if(num === 14) {
+		return 9;
+	}
+	if(num === 98) {
+		return 54;
+	}
 	return Math.floor(num/15)*8+num%15;
 }
 
@@ -578,10 +686,10 @@ ChessBoard.prototype.parseFEN = function(fen) {
 
 	// map the rest of the fen data
 	board.toMove = FENData[1];
-	board.wCastleKingside = FENData[2].match(/K/).length > 0;
-	board.wCastleQueenside = FENData[2].match(/Q/).length > 0;
-	board.bCastleKingside = FENData[2].match(/k/).length > 0;
-	board.bCastleQueenside = FENData[2].match(/q/).length > 0;
+	board.wCastleKingside = (FENData[2].match(/K/) || []).length > 0;
+	board.wCastleQueenside = (FENData[2].match(/Q/) || []).length > 0;
+	board.bCastleKingside = (FENData[2].match(/k/) || []).length > 0;
+	board.bCastleQueenside = (FENData[2].match(/q/) || []).length > 0;
 	board.enPassant = FENData[3] === '-' ? undefined : FENData[3];
 	board.plyCount = FENData[4] || 0;
 	board.moveNumber = FENData[4] || 0;
@@ -594,10 +702,12 @@ ChessBoard.prototype.isNumber = function(n) {
 }
 
 // displays the board in the console
-ChessBoard.prototype.displayBoard = function(board) {
-	//this.flip = true;
+ChessBoard.prototype.displayBoard = function(board, move) {
+	if(typeof board === 'string') {
+		board = this.parseFEN(board);
+	}
 	board = board || this.board;
-	console.info('');
+	console.info(move || '');
 	console.info('-----------------------------------------------------------------');
 
 	var i,j,s;

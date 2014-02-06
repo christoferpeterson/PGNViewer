@@ -5,9 +5,48 @@
 		 url('../fonts/DiaTTUSA.ttf');
 }
 
+body {
+	font-family: sans-serif;
+}
+
+h2
+{
+	font-weight: bold;
+	font-size: 1.35em;
+	padding: 3px 0;
+}
+
+h3
+{
+	font-weight: bold;
+	font-size: 1.20em;
+	padding: 3px 0;
+}
+
+h4
+{
+	font-weight: bold;
+	font-size: 1.05em;
+	padding: 3px 0;
+}
+
+sup {
+	padding: 0 2px;
+	vertical-align: super;
+	font-size: 0.65em;
+	color: red;
+	text-decoration: none;
+	font-weight: bold;
+}
+
 strong
 {
 	font-weight: bold;
+}
+
+.container:focus {
+	outline: none;
+	border: none;
 }
 
 .pgnViewerModule {
@@ -55,6 +94,7 @@ label input {
 }
 
 .comments { 
+	padding: 1em;
 	clear: both;
 	width: 30em;
 }
@@ -74,7 +114,7 @@ label input {
 }
 
 .variation .variation {
-	color: red;
+	color: green;
 }
 
 .variation .variation .variation {
@@ -83,6 +123,11 @@ label input {
 
 .variation [data-clickaction="clickMove"] {
 	font-weight: normal;
+}
+
+.result {
+	display: block;
+	margin-top: 5px;
 }
 
 [data-clickaction] {
@@ -95,5 +140,5 @@ label input {
 	padding: 2px 3px;
 }
 [data-clickaction="clickMove"].active {
-	background: #ccc;
+	background: yellow;
 }
