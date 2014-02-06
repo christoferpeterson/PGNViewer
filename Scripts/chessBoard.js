@@ -161,10 +161,15 @@ ChessBoard.prototype.validate_moves = function(rMoves, board) {
 					validMove = this.checkMove(algebraic, board, rMoves[i]);
 
 					if(validMove) {
+						board = validMove.board;
+						board.plyCount = rMoves[i].plyCount;
+						board.moveNumber = rMoves[i].moveNumber;
+
 						rMoves[i].origin = validMove.origin;
 						rMoves[i].destination = validMove.destination;
 						rMoves[i].smith = validMove.smith;
 						rMoves[i].board = JSON.parse(JSON.stringify(validMove.board));
+						rMoves[i].fen = this.convertBoardToFEN(board);
 
 						if(rMoves[i].variations.length > 0) {
 							var prevBoard = rMoves[i-1] === undefined ? this.startingPosition : rMoves[i-1].board;
@@ -172,7 +177,6 @@ ChessBoard.prototype.validate_moves = function(rMoves, board) {
 								rMoves[i].variations[j] = this.validate_moves(rMoves[i].variations[j], prevBoard);
 							};
 						}
-						board = validMove.board;
 					}
 					else {
 						throw('INVALID MOVE: the move \'' + rMoves[i].fullText + '\' is illegal.');
@@ -358,17 +362,82 @@ ChessBoard.prototype.checkMove = function(oMove, board, originalMove) {
 		board = this.movePiece(startSquare, endSquare, board);
 	}
 
-	var fen = this.convertBoardToFEN(board);
-
-	return { fen: fen, smith: oMove.fullText, board: board, origin: startSquare, destination: endSquare };
+	return { fen: undefined, smith: oMove.fullText, board: board, origin: startSquare, destination: endSquare };
 };
 
 
-// ***** TO DO ***** EVERYTHING
+// this method will convert a board object into its string representation, FEN
 ChessBoard.prototype.convertBoardToFEN = function(board) {
-	var fen = '';
-	
-	return fen;
+	// since the fen is written left to right up to down,
+	// and the board array is written right to left up to down,
+	// some loop trickery is needed to iterate over all the squares
+	// by starting at 56 and going down 8 every time, going
+	// down 8 ranks, stopping after 0, is possible
+	// by loooping from 0 to 7, and adding to the rank loop,
+	// access every square going left to right is granted
+
+	var fen = [];
+	var pieces = [];
+	var i = 56;
+	var j = 0;
+	var emptyCount = 0;
+	var rankText = [];
+	var castleRights = '';
+
+	while(i >= 0) { // loop over all the board squares
+		rankText = [];
+		j = 0;
+
+		while(j < 8) { // loop over all the squares in this rank
+			if(board.squares[i+j] === undefined || board.squares[i+j] === null) {
+				// if the square is empty
+				emptyCount++;
+			}
+			else { // if the square is not empty
+				if(emptyCount !== 0) { // if the square isn't empty but there are empty squares before it
+					rankText.push(emptyCount);
+					emptyCount = 0;
+				}
+
+				// add the fen representation of the piece
+				rankText.push(board.squares[i+j].fen);
+			}
+
+			// next square
+			j++;
+		}
+
+		if(emptyCount !== 0) {
+			// if there are empty squares at the end of the rank
+			rankText.push(emptyCount);
+			emptyCount = 0;
+		}
+
+		// add the rank to the piece array
+		pieces.push(rankText.join(''));
+
+		// next rank
+		i-=8;
+	}
+
+	fen.push(pieces.join('/')); // apply all the piece placements
+	fen.push(board.toMove); // set whose move it is
+
+	// determine castling rights
+	castleRights += board.wCastleKingside ? 'K' : '';
+	castleRights += board.wCastleQueenside ? 'Q' : '';
+	castleRights += board.bCastleKingside ? 'k' : '';
+	castleRights += board.bCastleQueenside ? 'q' : '';
+
+
+	// apply additional details to fen
+	fen.push(castleRights === '' ? '-' : castleRights);
+	fen.push(board.enPassant || '-');
+	fen.push(board.moveNumber || 0);
+	fen.push(board.plyCount || 0);
+
+	// return the fen
+	return fen.join(' ');
 }
 
 ChessBoard.prototype.movePiece = function(start, end, board) {
@@ -587,18 +656,18 @@ ChessBoard.prototype.displayBoard = function(board) {
 ChessBoard.prototype.getFENsymbol = function(a) {
 	var piece;
 	switch(a) {
-		case 'r': {piece = {pieceType: '♜', owner: 'b', diagram: 'r', blackSquare: 't'};} break;
-		case 'n': {piece = {pieceType: '♞', owner: 'b', diagram: 'n', blackSquare: 's'};} break;
-		case 'b': {piece = {pieceType: '♝', owner: 'b', diagram: 'l', blackSquare: 'v'};} break;
-		case 'q': {piece = {pieceType: '♛', owner: 'b', diagram: 'q', blackSquare: 'w'};} break;
-		case 'k': {piece = {pieceType: '♚', owner: 'b', diagram: 'k', blackSquare: 'm'};} break;
-		case 'p': {piece = {pieceType: '♟', owner: 'b', diagram: 'p', blackSquare: 'z'};} break;
-		case 'R': {piece = {pieceType: '♖', owner: 'w', diagram: 'R', blackSquare: 't'};} break;
-		case 'N': {piece = {pieceType: '♘', owner: 'w', diagram: 'N', blackSquare: 's'};} break;
-		case 'B': {piece = {pieceType: '♗', owner: 'w', diagram: 'L', blackSquare: 'v'};} break;
-		case 'Q': {piece = {pieceType: '♕', owner: 'w', diagram: 'Q', blackSquare: 'w'};} break;
-		case 'K': {piece = {pieceType: '♔', owner: 'w', diagram: 'K', blackSquare: 'm'};} break;
-		case 'P': {piece = {pieceType: '♙', owner: 'w', diagram: 'P', blackSquare: 'z'};} break;
+		case 'r': case '♜': {piece = {fen: 'r', pieceType: '♜', owner: 'b', diagram: 'r', blackSquare: 't'};} break;
+		case 'n': case '♞': {piece = {fen: 'n', pieceType: '♞', owner: 'b', diagram: 'n', blackSquare: 's'};} break;
+		case 'b': case '♝': {piece = {fen: 'b', pieceType: '♝', owner: 'b', diagram: 'l', blackSquare: 'v'};} break;
+		case 'q': case '♛': {piece = {fen: 'q', pieceType: '♛', owner: 'b', diagram: 'q', blackSquare: 'w'};} break;
+		case 'k': case '♚': {piece = {fen: 'k', pieceType: '♚', owner: 'b', diagram: 'k', blackSquare: 'm'};} break;
+		case 'p': case '♟': {piece = {fen: 'p', pieceType: '♟', owner: 'b', diagram: 'p', blackSquare: 'z'};} break;
+		case 'R': case '♖': {piece = {fen: 'R', pieceType: '♖', owner: 'w', diagram: 'R', blackSquare: 't'};} break;
+		case 'N': case '♘': {piece = {fen: 'N', pieceType: '♘', owner: 'w', diagram: 'N', blackSquare: 's'};} break;
+		case 'B': case '♗': {piece = {fen: 'B', pieceType: '♗', owner: 'w', diagram: 'L', blackSquare: 'v'};} break;
+		case 'Q': case '♕': {piece = {fen: 'Q', pieceType: '♕', owner: 'w', diagram: 'Q', blackSquare: 'w'};} break;
+		case 'K': case '♔': {piece = {fen: 'K', pieceType: '♔', owner: 'w', diagram: 'K', blackSquare: 'm'};} break;
+		case 'P': case '♙': {piece = {fen: 'P', pieceType: '♙', owner: 'w', diagram: 'P', blackSquare: 'z'};} break;
 		default: piece = undefined;
 	}
 

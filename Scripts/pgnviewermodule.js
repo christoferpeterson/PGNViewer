@@ -8,7 +8,8 @@ pgnViewerModule.prototype.elementMap = {
 	'backward': '[data-clickaction="prevMove"], [data-clickaction="start"]',
 	'forward': '[data-clickaction="nextMove"], [data-clickaction="end"]',
 	'clickMove': '[data-clickaction="clickMove"]',
-	'comments': 'div.comments'
+	'comments': 'div.comments',
+	'fenInput': 'input[name="fen"]'
 };
 
 pgnViewerModule.prototype.initModule = function () {
@@ -111,6 +112,7 @@ pgnViewerModule.prototype.buildModule = function() {
 
 	var $boardWrapper = $('<div class="boardWrapper"></div>');
 	var $board = $('<div class="board"></div>');
+	var $notationWrapper = $('<div class="notationWrapper"></div>');
 	var $notationWindow = $('<div class="notationWindow"></div>');
 	var $comments = $('<div class="comments"></div>');
 	var $controls = this.buildControls();
@@ -129,8 +131,9 @@ pgnViewerModule.prototype.buildModule = function() {
 
 	$board.html(b.join('<br />\r\n'));
 	$boardWrapper.append($board, $controls);
+	$notationWrapper.append($notationWindow, $('<label>FEN: <input type="text" name="fen" /></label>'))
 
-	this.$module.append($boardWrapper, $notationWindow, $comments);
+	this.$module.append($boardWrapper, $notationWrapper, $comments);
 };
 pgnViewerModule.prototype.buildControls = function() {
 	var $c = $('<div class="controls"></div>');
@@ -202,14 +205,20 @@ pgnViewerModule.prototype.updateBoard = function(board, move) {
 		newScrollPos = $note.offset().top - this.$el('notation').offset().top + this.$el('notation').scrollTop();
 	}
 
+	if(move === undefined || move.fen === undefined) {
+		this.$el('fenInput').val(this.chessBoard.convertBoardToFEN(this.chessBoard.startingPosition));
+	}
+	else {
+		this.$el('fenInput').val(move.fen);
+	}
+
 	this.$el('notation').scrollTop(newScrollPos);
 
 	if(move && move.fullText !== undefined) {
 		var moveText = [];
 		moveText.push('<p>');
 
-		console.info(move);
-		moveText.push(move.commentBefore || 'Position after');
+		moveText.push(move.commentBefore || '');
 		moveText.push(' ');
 
 		moveText.push('<strong>')
@@ -458,12 +467,10 @@ pgnViewerModule.prototype.convertVariationsToMoves = function(rVariations) {
 			subVariations = [];
 
 			for (var j = 0; j < rVariations[i].sub.length; j++) {
-				subVariations.push(this.convertVariationsToMoves(rVariations[i].sub));
+				subVariations = this.convertVariationsToMoves(rVariations[i].sub);
 			};
 
-			for (var k = 0; k < subVariations.length; k++) {
-				move = this.mergeMovesAndVariations(move, subVariations[k]);
-			};
+			move = this.mergeMovesAndVariations(move, subVariations);
 		}
 
 		moves.push(move);
@@ -479,7 +486,7 @@ pgnViewerModule.prototype.mergeMovesAndVariations = function(rMoves, rVariations
 		var moveIndex;
 		for (var i = 0; i < rVariations.length; i++) {
 
-			if(rVariations[i].length > 0){
+			if(rVariations[i].length > 0) {
 				moveIndex = rMoves.searchByProperty("plyCount", rVariations[i][0].plyCount);
 				if(moveIndex === -1) {
 					continue;
