@@ -125,6 +125,7 @@ pgnViewerModule.prototype.loadPrevMove = function() {
 pgnViewerModule.prototype.buildModule = function(callback) {
 	var buildModule = function() {
 		var $container = $('<div class="container" data-keydownaction="handleKeyDown" tabindex="0"></div>');
+		var $pgnSelect = $('<select data-changeaction="loadGame">');
 		var $details = $('<div class="details"></div>')
 		var $boardWrapper = $('<div class="boardWrapper"></div>');
 		var $board = $('<div class="board"></div>');
@@ -146,9 +147,21 @@ pgnViewerModule.prototype.buildModule = function(callback) {
 		b.push('1+-+-+-+-!');
 		b.push('xabcdefghy');
 
+
+		var pgn;
+		for (var i = 0; i < this.pgns.length; i++) {
+			pgn = this.pgns[i];
+			$pgnSelect.append($('<option value="' + i + '">' + pgn.event + '</option>'))
+		};
+
 		$board.html(b.join('<br />\r\n'));
 		$boardWrapper.append($board, $controls);
 		$notationWrapper.append($notationWindow, $('<label>FEN: <input type="text" name="fen" /></label>'))
+
+		if(this.pgns.length > 1) {
+			$container.append($pgnSelect);
+		}
+
 		$container.append($details, $boardWrapper, $notationWrapper, $comments);
 		this.$module.append($container);
 
@@ -160,7 +173,6 @@ pgnViewerModule.prototype.buildModule = function(callback) {
 };
 pgnViewerModule.prototype.buildControls = function() {
 	var $c = $('<div class="controls"></div>');
-	var $pgnSelect = $('<select data-changeaction="loadGame">');
 
 	$c.append($('<button data-clickaction="start">start</button>'));
 	$c.append($('<button data-clickaction="prevMove">prev</button>'));
@@ -169,16 +181,6 @@ pgnViewerModule.prototype.buildControls = function() {
 	$c.append($('<button data-clickaction="flip">flip</button>'));
 	$c.append($('<button data-clickaction="download">get pgn</button>'))
 	$c.append($('<label><input data-changeaction="toggleAnnotations" type="checkbox" /> Hide annotations</label>'));
-
-	var pgn;
-	for (var i = 0; i < this.pgns.length; i++) {
-		pgn = this.pgns[i];
-		$pgnSelect.append($('<option value="' + i + '">' + pgn.event + '</option>'))
-	};
-
-	if(this.pgns.length > 1) {
-		$c.append($pgnSelect);
-	}
 
 	return $c;
 }
@@ -366,7 +368,7 @@ pgnViewerModule.prototype.setupNotation = function(rMoves, variationNumber) {
 
 					address.push(i+j); // add the move number to the address
 					// open the clickable region
-					html.push(' <span data-clickaction="clickMove" data-actionvalue="' + address.join('.') + '">');
+					html.push(' <span data-clickaction="clickMove" data-actionvalue="' + address.join('.') + '" ' + (moveArray[i+j].error !== undefined ? 'class="error"' : '') + '>');
 
 					if(!numberSet) { // generate the move number
 						if(moveArray[i+j].player === 'w') {
@@ -437,7 +439,7 @@ pgnViewerModule.prototype.setupNotation = function(rMoves, variationNumber) {
 	var obj = renderMoves(rMoves);
 	this.chessBoard.moves = obj.moves;
 	html.push(obj.html);
-	return html.join('') + '<span class="result">'+ this.currentGame.result + '</span>';
+	return html.join('') + '<span class="result">'+ (this.currentGame.result || '*') + '</span>';
 }
 
 // Given a PGN, this will return a pgn stripped of all annotations and variations
@@ -690,7 +692,7 @@ pgnViewerModule.prototype.generateDiagram = function(board) {
 	i = this.chessBoard.flip ? 7 : 56;
 
 	// used to determine if the squares will be dark or light
-	darkSquare = this.flip;
+	darkSquare = this.chessBoard.flip;
 
 	while(i < 64 && i >= 0) {
 		j = 0;
@@ -702,11 +704,10 @@ pgnViewerModule.prototype.generateDiagram = function(board) {
 
 		while(j < 8) {
 
-			// determine if the square should be dark or light
-			isDark = (darkSquare && pos%2 !== 0) || (!darkSquare && (pos)%2 === 0)
-
 			// calculate the current board position
 			pos = this.chessBoard.flip ? i-j : i+j;
+
+			isDark = (darkSquare && pos%2 === 0) || (!darkSquare && pos%2 !== 0);
 
 			// if the square is occupied
 			if(board.squares[pos]) {

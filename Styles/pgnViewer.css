@@ -142,3 +142,8 @@ label input {
 [data-clickaction="clickMove"].active {
 	background: yellow;
 }
+
+[data-clickaction="clickMove"].error {
+	background: red;
+	color: #fff;
+}

@@ -63,15 +63,21 @@ ChessBoard.prototype.jumpToMove = function(move) {
 	if(typeof move === 'string') {
 		var m = this.getComplexMove(move);
 		if(m) {
-			this.currentMove = m.address;
-			this.currentPosition = m.board;
-			this.currentMoveObject = m;
+			if(m.error !== undefined) {
+				alert(m.error)
+			}
+			else {
+				this.currentMove = m.address;
+				this.currentPosition = m.board;
+				this.currentMoveObject = m;
+			}
 		}
 		else {
 			return false;
 		}
 	}
 	else {
+
 		if(move < 0) {
 			this.currentMove = -1;
 			this.currentPosition = this.startingPosition;
@@ -87,6 +93,11 @@ ChessBoard.prototype.jumpToMove = function(move) {
 			this.currentMove = move;
 			this.currentPosition = this.moves[this.currentMove].board;
 			this.currentMoveObject = this.moves[this.currentMove];
+		}
+
+		if(this.currentMoveObject.error !== undefined) {
+			alert(this.currentMoveObject.error);
+			return undefined;
 		}
 	}
 
@@ -156,7 +167,7 @@ ChessBoard.prototype.validate_moves = function(rMoves, board) {
 					check: arguments[7],
 					player: rMoves[i].player
 				};
-				// try {
+				try {
 					validMove = this.checkMove(algebraic, board, rMoves[i]);
 
 					if(validMove) {
@@ -180,10 +191,10 @@ ChessBoard.prototype.validate_moves = function(rMoves, board) {
 					else {
 						throw('INVALID MOVE: the move \'' + rMoves[i].fullText + '\' is illegal.');
 					}
-				// }
-				// catch(err) {
-				// 	console.info(err);
-				// }
+				}
+				catch(err) {
+					rMoves[i].error = err;
+				}
 
 			}, this));
 		};
@@ -221,7 +232,7 @@ ChessBoard.prototype.checkMove = function(oMove, board, originalMove) {
 	}
 
 	// if the move is a castle
-	if(oMove.castle !== undefined && oMove.castle !== null)
+	if(oMove.castle !== undefined && oMove.castle !== null && oMove.castle !== '')
 	{
 		var originalKingSquare = isWhite ? this.squareMap['e1'] : this.squareMap['e8'];
 		var originalRookSquare;
@@ -269,6 +280,19 @@ ChessBoard.prototype.checkMove = function(oMove, board, originalMove) {
 			checkSquares = isWhite 
 				? [this.squareMap['e1'],this.squareMap['f1'],this.squareMap['g1']] 
 				: [this.squareMap['e8'],this.squareMap['f8'],this.squareMap['g8']];
+		}
+
+		var throughCheck = false;
+
+		for (var i = 0; i < checkSquares.length; i++) {
+			if(this.isUnderAttack(checkSquares[i], board, oMove.player)) {
+				throughCheck = true;
+				break;
+			}
+		};
+
+		if(throughCheck) {
+			throw('INVALID MOVE:  On move ' + originalMove.moveNumber + (isWhite ? 'white' : 'black') + ' cannot castle through, into, or while in check.');
 		}
 
 		board = this.movePiece(originalKingSquare, finalKingSquare, board);
@@ -390,19 +414,16 @@ ChessBoard.prototype.checkMove = function(oMove, board, originalMove) {
 				};
 
 				if(matches.length === 0) {
-					this.displayBoard(board, oMove)
 					throw ('INVALID MOVE: On move ' + originalMove.moveNumber + ' for ' + (isWhite ? 'white' : 'black') + ' there are no ' + comparePiece + '\'s that can move to ' + this.algebraicMap[endSquare]);
 				}
 				else if(matches.length === 1) {
 					startSquare = matches[0]
 				}
 				else {
-					this.displayBoard(board, oMove)
 					throw('AMBIGUOUS MOVE (underspecific indicator): On move ' + originalMove.moveNumber + ' for ' + (isWhite ? 'white' : 'black') + ' there are two or more pieces that can move to ' + this.algebraicMap[endSquare])
 				}
 			}
 			else {
-				this.displayBoard(board, oMove);
 				throw('AMBIGUOUS MOVE (no indicator): On move ' + originalMove.moveNumber + ' for ' + (isWhite ? 'white' : 'black') + ' there are two or more pieces that can move to ' + this.algebraicMap[endSquare])
 			}
 		}
@@ -411,7 +432,6 @@ ChessBoard.prototype.checkMove = function(oMove, board, originalMove) {
 				oMove.piece = 'p';
 				return this.checkMove(oMove, board, originalMove);
 			}
-			this.displayBoard(board, oMove);
 			throw ('INVALID MOVE (no possible squares): On move ' + originalMove.moveNumber + ' for ' + (isWhite ? 'white' : 'black') + ' there are no ' + comparePiece + '\'s that can move to ' + this.algebraicMap[endSquare]);
 		}
 
@@ -461,6 +481,12 @@ ChessBoard.prototype.checkMove = function(oMove, board, originalMove) {
 		
 		// move the pieces
 		board = this.movePiece(startSquare, endSquare, board, promotionPiece);
+
+		var kingsquare = board.squares.searchByProperty('pieceType', isWhite ? '♔' : '♚');
+
+		if(this.isUnderAttack(kingsquare, board, oMove.player) > 0) {
+			throw('INVALID MOVE: On move ' + originalMove.moveNumber + '  ' + (isWhite ? 'white' : 'black') +' has moved into or failed to move out of check.');
+		}
 	}
 
 	return { fen: undefined, smith: oMove.fullText, board: board, origin: startSquare, destination: endSquare };
@@ -543,6 +569,7 @@ ChessBoard.prototype.convertBoardToFEN = function(board) {
 
 ChessBoard.prototype.movePiece = function(start, end, board, promotionPiece) {
 	if(start === undefined || end === undefined || board === undefined || board.squares === undefined) {
+		this.displayBoard(board);
 		console.info('start', start, 'end', end, 'board', board)
 		throw('not enough info to move a piece start: ' + start + ', end: ' + end);
 	}
@@ -564,14 +591,22 @@ ChessBoard.prototype.to15 = function(num) {
 	return Math.floor(num/8)*15+num%8;
 }
 
+ChessBoard.array8to15 = [
+	0,1,2,3,4,5,6,7,
+	15, 16, 17, 18, 19, 20, 21, 22,
+	30, 31, 32, 33, 34, 35, 36, 37,
+	45, 46, 47, 48, 49, 50, 51, 52,
+	60, 61, 62, 63, 64, 65, 66, 67,
+	75, 76, 77, 78, 79, 80, 81, 82,
+	90, 91, 92, 93, 94, 95, 96, 97,
+	105, 106, 107, 108, 109, 110, 111, 112
+];
 // convert to 8x8 grid
 ChessBoard.prototype.to8 = function(num) {
-	if(num === 14) {
-		return 9;
+	if(ChessBoard.array8to15.indexOf(num) === -1) {
+		return undefined;
 	}
-	if(num === 98) {
-		return 54;
-	}
+
 	return Math.floor(num/15)*8+num%15;
 }
 
@@ -629,9 +664,10 @@ ChessBoard.prototype.isUnderAttack = function(square, board, player) {
 
 					// convert back to 8x8
 					checkSquare = self.to8(checkSquare);
-					if(board.squares[checkSquare]) {
-						if(board.squares[checkSquare].pieceType === key)
+					if(board.squares[checkSquare] !== undefined && board.squares[checkSquare] !== null) {
+						if(board.squares[checkSquare].pieceType === key) {
 							attackCount++;
+						}
 						break;
 					}
 				};

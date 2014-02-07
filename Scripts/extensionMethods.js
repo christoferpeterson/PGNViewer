@@ -11,6 +11,9 @@ Array.prototype.clean = function(deleteValue) {
 Array.prototype.searchByProperty = function (prop, value) {
 	if(prop && value) {
 		for (var i = 0; i < this.length; i++) {
+			if(this[i] === undefined || this[i] === null) {
+				continue;
+			}
 			if (this[i][prop] === value) {
 				return i;
 			}

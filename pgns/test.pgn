@@ -10,7 +10,7 @@
 
 2. Nc3 d5 { $140 3. exd5 Nxd5 $10 } 3. e5 $5 d4 $1 4. exf6 dxc3 5. d4 (  $142
 5. fxg7 $10) 5... cxb2 $15 6. fxg7 bxa1=Q 7. gxh8=Q Qb1 { ?? } 8. Qxf8+  $1
-Kxf8 9. Bh6+ $18 { special characters within comments: בגדהו } *
+Kxf8 (8... Qxc1) 9. Bh6+ $18 { special characters within comments: בגדהו } *
 
 [Event "Testing PGN header tags, comments and clock information"]
 [Site "Some site"]
