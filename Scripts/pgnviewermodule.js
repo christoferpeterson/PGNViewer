@@ -11,7 +11,8 @@ pgnViewerModule.prototype.elementMap = {
 	'clickMove': '[data-clickaction="clickMove"]',
 	'comments': 'div.comments',
 	'fenInput': 'input[name="fen"]',
-	'details': 'div.details'
+	'details': 'div.details',
+	'svg': 'div.svg'
 };
 
 pgnViewerModule.prototype.initModule = function () {
@@ -330,7 +331,54 @@ pgnViewerModule.prototype.updateBoard = function(board, move) {
 	}
 
 	// display the board on the screen
-	this.$el('board').html(diagram);
+	this.$el('board').html('<div class="diagram">' + diagram + '</div>');
+	this.$el('board').append($('<div id="diagramSVG" class="svg"></div>'));
+	this.$el('board').append(this.drawPaint(move));
+}
+
+pgnViewerModule.prototype.drawPaint = function(move) {
+	if(move === undefined) {
+		return;
+	}
+	if(!((move.arrow !== undefined && move.arrow.length > 0) || (move.highlight !== undefined && move.highlight.length > 0))){
+		return;
+	}
+
+	var height = this.$el('board').height();
+	var width = this.$el('board').width();
+
+// use Raphael to generate arrows
+//  var p = Raphael("diagramSVG", 300, 200);
+//     $(p.canvas).attr("id", "p");
+//     var rect = p.rect(10, 10, 100, 100);
+//     $(rect.node).attr("id", "rect");
+//     $("#rect").attr("filter", "url(#innerbewel)");
+//     $("#rect").attr("fill", "red");
+
+//     var f = "<filter id='innerbewel' x0='-50%' y0='-50%' width='200%' height='200%'>\
+//   <feGaussianBlur in='SourceAlpha' stdDeviation='2' result='blur'/>\
+//   <feOffset dy='3' dx='3'/>\
+//   <feComposite in2='SourceAlpha' operator='arithmetic'\
+//              k2='-1' k3='1' result='hlDiff'/>\
+//   <feFlood flood-color='white' flood-opacity='0.8'/>\
+//   <feComposite in2='hlDiff' operator='in'/>\
+//   <feComposite in2='SourceGraphic' operator='over' result='withGlow'/>\
+// \
+//   <feOffset in='blur' dy='-3' dx='-3'/>\
+//   <feComposite in2='SourceAlpha' operator='arithmetic'\
+//             k2='-1' k3='1' result='shadowDiff'/>\
+//   <feFlood flood-color='black' flood-opacity='0.8'/>\
+//   <feComposite in2='shadowDiff' operator='in'/>\
+//   <feComposite in2='withGlow' operator='over'/>\
+// </filter>";
+
+//     // Create dummy svg with filter definition 
+//     $("body").append('<svg id="dummy" style="display:none"><defs>' + f + '</defs></svg>');
+//     // Append filter definition to Raphael created svg
+//     $("#p defs").append($("#dummy filter"));
+//     // Remove dummy
+//     $("#dummy").remove();
+//     $("#rect").attr("fill", "orange");
 }
 
 pgnViewerModule.prototype.displayMoves = function() {
@@ -396,6 +444,9 @@ pgnViewerModule.prototype.setupNotation = function(rMoves, variationNumber) {
 						html.push('<sup>c</sup>');
 					}
 
+					if((moveArray[i+j].arrow !== undefined && moveArray[i+j].arrow.length > 0) || (moveArray[i+j].highlight !== undefined && moveArray[i+j].highlight.length > 0)) {
+						html.push('&#9630;')
+					}
 
 					html.push('</span>'); // close the clickable region
 
@@ -654,6 +705,45 @@ pgnViewerModule.prototype.convertStringToMoves = function(sMoves) {
 			});
 		}
 	});
+
+	var paintRegex = /(\[%csl(?:\s*)((?:(?:R|G)[a-h][1-8](?:\,)?)*)\])?(\[%cal(?:\s*)((?:(?:R|G)[a-h][1-8][a-h][1-8](?:\,)?)*)\])?/gi;
+	var arrowRegex = /(R|G)([a-h][1-8])([a-h][1-8])/gi;
+	var highlightRegex = /(R|G)([a-h][1-8])/gi;
+	var highlight;
+	var arrow;
+	for (var i = 0; i < moves.length; i++) {
+		if(moves[i].commentAfter !== undefined && moves[i].commentAfter !== '') {
+			moves[i].commentAfter = moves[i].commentAfter.replace(paintRegex, function() {
+				if(arguments[1] !== undefined) {
+					highlight = (arguments[2] || '').split(',');
+					arrow = (arguments[4] || '').split(',');
+
+					moves[i].arrow = [];
+					moves[i].highlight = [];
+
+					for (var j = 0; j < arrow.length; j++) {
+						arrow[j].replace(arrowRegex, function() {
+							moves[i].arrow.push({
+								color: arguments[1] === 'R' ? 'red' : 'green',
+								start: ChessBoard.squareMap[arguments[2]],
+								end: ChessBoard.squareMap[arguments[3]]
+							});
+						});
+					};
+
+					for (var k = 0; k < highlight.length; k++) {
+						highlight[k].replace(highlightRegex, function() {
+							moves[i].highlight.push({
+								color: arguments[1] === 'R' ? 'red' : 'green',
+								square: ChessBoard.squareMap[arguments[2]]
+							});
+						});
+					};
+				}
+				return '';
+			});
+		}
+	};
 
 	return moves;
 }

@@ -160,7 +160,7 @@ ChessBoard.prototype.validate_moves = function(rMoves, board) {
 					fullText: arguments[0],
 					piece: arguments[1],
 					indicator: arguments[2],
-					isCapture: arguments[3] == "x",
+					isCapture: arguments[3] === 'x',
 					finalSquare: arguments[4],
 					promotionPiece: arguments[5],
 					castle: arguments[6],
@@ -234,7 +234,7 @@ ChessBoard.prototype.checkMove = function(oMove, board, originalMove) {
 	// if the move is a castle
 	if(oMove.castle !== undefined && oMove.castle !== null && oMove.castle !== '')
 	{
-		var originalKingSquare = isWhite ? this.squareMap['e1'] : this.squareMap['e8'];
+		var originalKingSquare = isWhite ? ChessBoard.squareMap['e1'] : ChessBoard.squareMap['e8'];
 		var originalRookSquare;
 		var finalKingSquare;
 		var finalRookSquare;
@@ -254,12 +254,12 @@ ChessBoard.prototype.checkMove = function(oMove, board, originalMove) {
 			}
 
 			// set the required squares
-			originalRookSquare = isWhite ? this.squareMap['a1'] : this.squareMap['a8'];
-			finalKingSquare = isWhite ? this.squareMap['c1'] : this.squareMap['c8'];
-			finalRookSquare = isWhite ? this.squareMap['d1'] : this.squareMap['d8'];
+			originalRookSquare = isWhite ? ChessBoard.squareMap['a1'] : ChessBoard.squareMap['a8'];
+			finalKingSquare = isWhite ? ChessBoard.squareMap['c1'] : ChessBoard.squareMap['c8'];
+			finalRookSquare = isWhite ? ChessBoard.squareMap['d1'] : ChessBoard.squareMap['d8'];
 			checkSquares = isWhite 
-				? [this.squareMap['c1'], this.squareMap['d1'], this.squareMap['e1']] 
-				: [this.squareMap['c8'], this.squareMap['d8'], this.squareMap['e8']];
+				? [ChessBoard.squareMap['c1'], ChessBoard.squareMap['d1'], ChessBoard.squareMap['e1']] 
+				: [ChessBoard.squareMap['c8'], ChessBoard.squareMap['d8'], ChessBoard.squareMap['e8']];
 		}
 
 		// castled kingside
@@ -274,12 +274,12 @@ ChessBoard.prototype.checkMove = function(oMove, board, originalMove) {
 			}
 
 			// set the required squares
-			originalRookSquare = isWhite ? this.squareMap['h1'] : this.squareMap['h8'];
-			finalRookSquare = isWhite ? this.squareMap['f1'] : this.squareMap['f8'];
-			finalKingSquare = isWhite ? this.squareMap['g1'] : this.squareMap['g8'];
+			originalRookSquare = isWhite ? ChessBoard.squareMap['h1'] : ChessBoard.squareMap['h8'];
+			finalRookSquare = isWhite ? ChessBoard.squareMap['f1'] : ChessBoard.squareMap['f8'];
+			finalKingSquare = isWhite ? ChessBoard.squareMap['g1'] : ChessBoard.squareMap['g8'];
 			checkSquares = isWhite 
-				? [this.squareMap['e1'],this.squareMap['f1'],this.squareMap['g1']] 
-				: [this.squareMap['e8'],this.squareMap['f8'],this.squareMap['g8']];
+				? [ChessBoard.squareMap['e1'],ChessBoard.squareMap['f1'],ChessBoard.squareMap['g1']] 
+				: [ChessBoard.squareMap['e8'],ChessBoard.squareMap['f8'],ChessBoard.squareMap['g8']];
 		}
 
 		var throughCheck = false;
@@ -312,7 +312,7 @@ ChessBoard.prototype.checkMove = function(oMove, board, originalMove) {
 	else
 	{
 		var possibleSquares = [];
-		var defaultSquareNumber = this.squareMap[oMove.finalSquare];
+		var defaultSquareNumber = ChessBoard.squareMap[oMove.finalSquare];
 		var square = this.to15(defaultSquareNumber); // convert to 15x15 grid
 
 		var originSquare;
@@ -355,11 +355,11 @@ ChessBoard.prototype.checkMove = function(oMove, board, originalMove) {
 		// check pawn moves
 		if (oMove.piece === 'p'){
 			comparePiece = isWhite ? '♙' : '♟';
-			possibleSquares = calculatePossibleOrigins(comparePiece, this.pieceVector[oMove.player][comparePiece][oMove.isCapture ? 1 : 0], true);
+			possibleSquares = calculatePossibleOrigins(comparePiece, ChessBoard.pieceVector[oMove.player][comparePiece][oMove.isCapture ? 1 : 0], !oMove.isCapture);
 		}
 		else if(oMove.piece === 'k') {
 			comparePiece = isWhite ? '♔' : '♚';
-			possibleSquares = calculatePossibleOrigins(comparePiece, this.pieceVector[oMove.player][comparePiece][0]);
+			possibleSquares = calculatePossibleOrigins(comparePiece, ChessBoard.pieceVector[oMove.player][comparePiece][0]);
 
 			if(isWhite) {  // remove white's castling rights because king moved
 				board.wCastleKingside = false;
@@ -373,7 +373,7 @@ ChessBoard.prototype.checkMove = function(oMove, board, originalMove) {
 		else {
 			if(oMove.piece === 'n') { // knight moves
 				comparePiece = isWhite ? '♘' : '♞';
-				possibleSquares = calculatePossibleOrigins(comparePiece, this.pieceVector[oMove.player][comparePiece]);
+				possibleSquares = calculatePossibleOrigins(comparePiece, ChessBoard.pieceVector[oMove.player][comparePiece]);
 			}
 			else {
 				if(oMove.piece === 'b') { // bishop moves
@@ -386,8 +386,8 @@ ChessBoard.prototype.checkMove = function(oMove, board, originalMove) {
 					comparePiece = isWhite ? '♕' : '♛';
 				}
 
-				for (var set = 0; set < this.pieceVector[oMove.player][comparePiece].length; set++) {
-					possibleSquares = possibleSquares.concat(calculatePossibleOrigins(comparePiece, this.pieceVector[oMove.player][comparePiece][set], true));
+				for (var set = 0; set < ChessBoard.pieceVector[oMove.player][comparePiece].length; set++) {
+					possibleSquares = possibleSquares.concat(calculatePossibleOrigins(comparePiece, ChessBoard.pieceVector[oMove.player][comparePiece][set], true));
 				};
 			}
 		}
@@ -407,24 +407,24 @@ ChessBoard.prototype.checkMove = function(oMove, board, originalMove) {
 			}
 			else if(oMove.indicator) {
 				for (var i = 0; i < possibleSquares.length; i++) {
-					if((this.algebraicMap[possibleSquares[i]].match(new RegExp(oMove.indicator)) || []).length === 1)
+					if((ChessBoard.algebraicMap[possibleSquares[i]].match(new RegExp(oMove.indicator)) || []).length === 1)
 					{
 						matches.push(possibleSquares[i]);
 					}
 				};
 
 				if(matches.length === 0) {
-					throw ('INVALID MOVE: On move ' + originalMove.moveNumber + ' for ' + (isWhite ? 'white' : 'black') + ' there are no ' + comparePiece + '\'s that can move to ' + this.algebraicMap[endSquare]);
+					throw ('INVALID MOVE: On move ' + originalMove.moveNumber + ' for ' + (isWhite ? 'white' : 'black') + ' there are no ' + comparePiece + '\'s that can move to ' + ChessBoard.algebraicMap[endSquare]);
 				}
 				else if(matches.length === 1) {
 					startSquare = matches[0]
 				}
 				else {
-					throw('AMBIGUOUS MOVE (underspecific indicator): On move ' + originalMove.moveNumber + ' for ' + (isWhite ? 'white' : 'black') + ' there are two or more pieces that can move to ' + this.algebraicMap[endSquare])
+					throw('AMBIGUOUS MOVE (underspecific indicator): On move ' + originalMove.moveNumber + ' for ' + (isWhite ? 'white' : 'black') + ' there are two or more pieces that can move to ' + ChessBoard.algebraicMap[endSquare])
 				}
 			}
 			else {
-				throw('AMBIGUOUS MOVE (no indicator): On move ' + originalMove.moveNumber + ' for ' + (isWhite ? 'white' : 'black') + ' there are two or more pieces that can move to ' + this.algebraicMap[endSquare])
+				throw('AMBIGUOUS MOVE (no indicator): On move ' + originalMove.moveNumber + ' for ' + (isWhite ? 'white' : 'black') + ' there are two or more pieces that can move to ' + ChessBoard.algebraicMap[endSquare])
 			}
 		}
 		else {
@@ -432,20 +432,23 @@ ChessBoard.prototype.checkMove = function(oMove, board, originalMove) {
 				oMove.piece = 'p';
 				return this.checkMove(oMove, board, originalMove);
 			}
-			throw ('INVALID MOVE (no possible squares): On move ' + originalMove.moveNumber + ' for ' + (isWhite ? 'white' : 'black') + ' there are no ' + comparePiece + '\'s that can move to ' + this.algebraicMap[endSquare]);
+
+			// console.info(oMove);
+			// this.displayBoard(board, this.to8(this.to15(endSquare) + 16));
+			throw ('INVALID MOVE: On move ' + originalMove.moveNumber + ' for ' + (isWhite ? 'white' : 'black') + ' there are no ' + comparePiece + '\'s that can move to ' + ChessBoard.algebraicMap[endSquare]);
 		}
 
 
 		if(oMove.isCapture) {
 			if(board.squares[endSquare] === undefined || board.squares[endSquare] === null) {
 				// check white en passant
-				if(comparePiece === '♙' && board.enPassant === this.algebraicMap[endSquare] && (board.squares[endSquare-8] !== undefined && board.squares[endSquare-8] !== null)) {
+				if(comparePiece === '♙' && board.enPassant === ChessBoard.algebraicMap[endSquare] && (board.squares[endSquare-8] !== undefined && board.squares[endSquare-8] !== null)) {
 					oMove.captured = board.squares[endSquare-8]; // set the captured piece
 					board.squares[endSquare-8] = undefined; // remove the captured pawn
 				}
 
 				// check black en passant
-				else if(comparePiece === '♟' && board.enPassant === this.algebraicMap[endSquare] && (board.squares[endSquare+8] !== undefined && board.squares[endSquare+8] !== null)) {
+				else if(comparePiece === '♟' && board.enPassant === ChessBoard.algebraicMap[endSquare] && (board.squares[endSquare+8] !== undefined && board.squares[endSquare+8] !== null)) {
 					oMove.captured = board.squares[endSquare+8]; // set the captured piece
 					board.squares[endSquare+8] = undefined; // remove the captured pawn
 				}
@@ -461,11 +464,11 @@ ChessBoard.prototype.checkMove = function(oMove, board, originalMove) {
 
 		if(comparePiece === '♙' && endSquare - startSquare === 16) {
 			// allow en passant on the next move
-			board.enPassant = this.algebraicMap[startSquare+8];
+			board.enPassant = ChessBoard.algebraicMap[startSquare+8];
 		}
 		else if(comparePiece === '♟' && endSquare - startSquare === -16) {
 			// allow en passant on the next move
-			board.enPassant = this.algebraicMap[startSquare-8];
+			board.enPassant = ChessBoard.algebraicMap[startSquare-8];
 		}
 		else {
 			// disallow en passant on the next move
@@ -630,7 +633,7 @@ ChessBoard.prototype.isUnderAttack = function(square, board, player) {
 		return board.squares[checkSquare] && board.squares[checkSquare].pieceType === piece;
 	};
 
-	var vectors = this.pieceVector[player === 'w' ? 'b' : 'w'];
+	var vectors = ChessBoard.pieceVector[player === 'w' ? 'b' : 'w'];
 	for(var key in vectors) {
 		// if it is a pawn
 		if(key === '♙' || key === '♟') {
@@ -843,7 +846,7 @@ ChessBoard.prototype.clearBoard = function() {
 	};
 };
 
-ChessBoard.prototype.algebraicMap = [
+ChessBoard.algebraicMap = [
 	'a1', 'b1', 'c1', 'd1', 'e1', 'f1', 'g1', 'h1',
 	'a2', 'b2', 'c2', 'd2', 'e2', 'f2', 'g2', 'h2',
 	'a3', 'b3', 'c3', 'd3', 'e3', 'f3', 'g3', 'h3',
@@ -854,7 +857,7 @@ ChessBoard.prototype.algebraicMap = [
 	'a8', 'b8', 'c8', 'd8', 'e8', 'f8', 'g8', 'h8'
 ];
 
-ChessBoard.prototype.squareMap = {
+ChessBoard.squareMap = {
 	a1: 0, b1: 1, c1: 2, d1: 3, e1: 4, f1: 5, g1: 6, h1: 7,
 	a2: 8, b2: 9, c2: 10, d2: 11, e2: 12, f2: 13, g2: 14, h2: 15,
 	a3: 16, b3: 17, c3: 18, d3: 19, e3: 20, f3: 21, g3: 22, h3: 23,
@@ -865,7 +868,7 @@ ChessBoard.prototype.squareMap = {
 	a8: 56, b8: 57, c8: 58, d8: 59, e8: 60, f8: 61, g8: 62, h8: 63
 };
 
-ChessBoard.prototype.pieceVector = {
+ChessBoard.pieceVector = {
 	b: {
 		// black rook
 		'♜': [[-15,-30,-45,-60,-75,-90,-105],[1,2,3,4,5,6,7],[15, 30, 45,60,75,90,105],[-1,-2,-3,-4,-5,-6,-7]],

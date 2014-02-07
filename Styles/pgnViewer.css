@@ -44,6 +44,32 @@ strong
 	font-weight: bold;
 }
 
+.board {
+	white-space: nowrap;
+	width: 10em;
+	height: 10em;
+	position: relative;
+}
+
+.board .svg, .board div.diagram
+{
+	position: absolute;
+	top:0;
+	left: 0;
+}
+
+.board .svg 
+{
+	position: absolute;
+	height: 100%;
+	width: 100%;
+}
+
+.board div.diagram
+{
+	font-family: 'chessBoard';
+}
+
 .container:focus {
 	outline: none;
 	border: none;
@@ -51,13 +77,6 @@ strong
 
 .pgnViewerModule {
 	padding: 10px;
-}
-
-.board {
-	font-family: 'chessBoard';
-	white-space: nowrap;
-	width: 10em;
-	height: 10em;
 }
 
 label {
@@ -70,9 +89,9 @@ label input {
 }
 
 .boardWrapper {
-	font-size: 20pt;
 	float: left;
 	width: 10em;
+	font-size: 20pt;
 }
 
 .notationWrapper {
