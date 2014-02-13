@@ -346,39 +346,6 @@ pgnViewerModule.prototype.drawPaint = function(move) {
 
 	var height = this.$el('board').height();
 	var width = this.$el('board').width();
-
-// use Raphael to generate arrows
-//  var p = Raphael("diagramSVG", 300, 200);
-//     $(p.canvas).attr("id", "p");
-//     var rect = p.rect(10, 10, 100, 100);
-//     $(rect.node).attr("id", "rect");
-//     $("#rect").attr("filter", "url(#innerbewel)");
-//     $("#rect").attr("fill", "red");
-
-//     var f = "<filter id='innerbewel' x0='-50%' y0='-50%' width='200%' height='200%'>\
-//   <feGaussianBlur in='SourceAlpha' stdDeviation='2' result='blur'/>\
-//   <feOffset dy='3' dx='3'/>\
-//   <feComposite in2='SourceAlpha' operator='arithmetic'\
-//              k2='-1' k3='1' result='hlDiff'/>\
-//   <feFlood flood-color='white' flood-opacity='0.8'/>\
-//   <feComposite in2='hlDiff' operator='in'/>\
-//   <feComposite in2='SourceGraphic' operator='over' result='withGlow'/>\
-// \
-//   <feOffset in='blur' dy='-3' dx='-3'/>\
-//   <feComposite in2='SourceAlpha' operator='arithmetic'\
-//             k2='-1' k3='1' result='shadowDiff'/>\
-//   <feFlood flood-color='black' flood-opacity='0.8'/>\
-//   <feComposite in2='shadowDiff' operator='in'/>\
-//   <feComposite in2='withGlow' operator='over'/>\
-// </filter>";
-
-//     // Create dummy svg with filter definition 
-//     $("body").append('<svg id="dummy" style="display:none"><defs>' + f + '</defs></svg>');
-//     // Append filter definition to Raphael created svg
-//     $("#p defs").append($("#dummy filter"));
-//     // Remove dummy
-//     $("#dummy").remove();
-//     $("#rect").attr("fill", "orange");
 }
 
 pgnViewerModule.prototype.displayMoves = function() {
