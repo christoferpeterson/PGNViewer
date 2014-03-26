@@ -5,16 +5,20 @@
 		<link href="styles/pgnViewer.css" rel="stylesheet" type="text/css" media="screen" />
 	</head>
 	<body>
-		<div id="pgnViewerModule" class="pgnViewerModule" data-pgn=""; data-pgn-file="pgns/test.pgn">
+		<div id="pgnViewerModule" class="pgnViewerModule" data-pgn=""; data-pgn-file="">
 
 		</div>
 
-		<script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+		<script src="//code.jquery.com/jquery-1.10.1.min.js"></script>
 		<script src="scripts/extensionMethods.js"></script>
 		<script src="scripts/module.js"></script>
 		<script src="scripts/eventmanager.js"></script>
 		<script src="scripts/chessBoard.js"></script>
 		<script src="scripts/pgnviewermodule.js"></script>
-		<script>var pgnViewer = new pgnViewerModule(); pgnViewer.init("#pgnViewerModule");</script>
+		<script>
+			var $ = parent.$;
+			$('#pgnViewerModule').attr('data-pgn-file', window.location.href + 'pgns/test.pgn');
+			var pgnViewer = new pgnViewerModule(); pgnViewer.init('#pgnViewerModule');
+		</script>
 	</body>
 </html>

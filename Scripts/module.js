@@ -12,7 +12,7 @@ Module.prototype.init = function (moduleId, context) {
 	var $module;
 
 	if (typeof moduleId == 'string') {
-		$module = $(moduleId);
+		$module = $(moduleId, document);
 	}
 	else {
 		$module = moduleId;
