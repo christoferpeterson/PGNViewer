@@ -5,20 +5,23 @@
 		<link href="styles/pgnViewer.css" rel="stylesheet" type="text/css" media="screen" />
 	</head>
 	<body>
-		<div id="pgnViewerModule" class="pgnViewerModule" data-pgn=""; data-pgn-file="">
-
-		</div>
+		<div id="pgnviewer-1" data-pgn-file="pgns/test.pgn"></div>
+		<div id="pgnviewer-2" data-pgn-file="pgns/test.pgn"></div>
 
 		<script src="//code.jquery.com/jquery-1.10.1.min.js"></script>
+		<script>
+			var jquery_1_10_1 = $.noConflict(true);
+		</script>
 		<script src="scripts/extensionMethods.js"></script>
 		<script src="scripts/module.js"></script>
 		<script src="scripts/eventmanager.js"></script>
 		<script src="scripts/chessBoard.js"></script>
 		<script src="scripts/pgnviewermodule.js"></script>
 		<script>
-			var $ = parent.$;
-			$('#pgnViewerModule').attr('data-pgn-file', window.location.href + 'pgns/test.pgn');
-			var pgnViewer = new pgnViewerModule(); pgnViewer.init('#pgnViewerModule');
+			(function($) {
+				var viewer1 = new pgnViewer('#pgnviewer-1');
+				var viewer2 = new pgnViewer('#pgnviewer-2');
+			})(jquery_1_10_1);
 		</script>
 	</body>
 </html>

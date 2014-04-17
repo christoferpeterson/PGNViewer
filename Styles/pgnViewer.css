@@ -5,32 +5,34 @@
 		 url('../fonts/DiaTTUSA.ttf');
 }
 
-body {
-	font-family: sans-serif;
+.pgnViewer {
+	font-size: 15px;
+	padding: 1em;
+	width: 30em;
 }
 
-h2
+.pgnViewer h2
 {
 	font-weight: bold;
 	font-size: 1.35em;
 	padding: 3px 0;
 }
 
-h3
+.pgnViewer h3
 {
 	font-weight: bold;
 	font-size: 1.20em;
 	padding: 3px 0;
 }
 
-h4
+.pgnViewer h4
 {
 	font-weight: bold;
 	font-size: 1.05em;
 	padding: 3px 0;
 }
 
-sup {
+.pgnViewer sup {
 	padding: 0 2px;
 	vertical-align: super;
 	font-size: 0.65em;
@@ -39,130 +41,127 @@ sup {
 	font-weight: bold;
 }
 
-strong
+.pgnViewer strong
 {
 	font-weight: bold;
 }
 
-.board {
+.pgnViewer .board {
 	white-space: nowrap;
 	width: 10em;
 	height: 10em;
 	position: relative;
 }
 
-.board .svg, .board div.diagram
+.pgnViewer .board .svg, 
+.pgnViewer .board div.diagram
 {
 	position: absolute;
 	top:0;
 	left: 0;
 }
 
-.board .svg 
+.pgnViewer .board .svg 
 {
 	position: absolute;
 	height: 100%;
 	width: 100%;
 }
 
-.board div.diagram
+.pgnViewer .board div.diagram
 {
 	font-family: 'chessBoard';
 }
 
-.container:focus {
+.pgnViewer .container:focus {
 	outline: none;
 	border: none;
 }
 
-.pgnViewerModule {
-	padding: 10px;
+.pgnViewer label {
+	font-size: 0.85em;
 }
 
-label {
-	font-size: 10pt;
-}
-
-label input {
+.pgnViewer label input {
 	position: relative;
 	top: 2px;
 }
 
-.boardWrapper {
+.pgnViewer .boardWrapper {
 	float: left;
-	width: 10em;
-	font-size: 20pt;
+	font-size: 1.85em;
+	margin: 0 0 0.5em;
 }
 
-.notationWrapper {
-	width: 17em;
+.pgnViewer .notationWrapper {
+	width: 11.5em;
 	float: left;
-	margin-left: 1em;
+	margin: 0 0 0.5em;
 }
 
-.notationWrapper input {
-	width: 17em;
-}
-
-.notationWindow {
-	height: 15em;
+.pgnViewer .notationWindow {
+	height: 17em;
 	width: 100%;
 	margin: 1em 0em 0.5em;
 	overflow-y: auto;
 	font-weight: bold;
 }
 
-.comments { 
-	padding: 1em;
+.pgnViewer .comments { 
+	margin-top: 0.5em;
+	padding: 0.5em;
+	border: 1px solid black;
 	clear: both;
-	width: 30em;
+	height: 5em;
+	overflow-y: auto;
 }
 
-.controls {
+.pgnViewer .controls {
 	font-size: 10pt;
 	text-align: center;
 	clear: both;
 	margin: 0 auto;
 }
 
-.variation {
+.pgnViewer .variation {
 	font-style: italic;
 	font-weight: normal;
 	margin: 0 0 3px;
 	color: blue;
 }
 
-.variation .variation {
+.pgnViewer .variation .variation {
 	color: green;
 }
 
-.variation .variation .variation {
+.pgnViewer .variation .variation .variation {
 	color: purple;
 }
 
-.variation [data-clickaction="clickMove"] {
+.pgnViewer .variation [data-clickaction="clickMove"] {
 	font-weight: normal;
 }
 
-.result {
+.pgnViewer .result {
 	display: block;
 	margin-top: 5px;
 }
 
-[data-clickaction] {
+.pgnViewer [data-clickaction] {
 	cursor: pointer;
 	margin: 0 0 3px;
 }
 
-[data-clickaction="clickMove"] {
+.pgnViewer [data-clickaction="clickMove"] {
 	display: inline-block;
 	padding: 2px 3px;
 }
-[data-clickaction="clickMove"].active {
+
+.pgnViewer [data-clickaction="clickMove"].active {
 	background: yellow;
 }
 
-[data-clickaction="clickMove"].error {
+.pgnViewer [data-clickaction="clickMove"].error {
 	background: red;
 	color: #fff;
 }
