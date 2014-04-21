@@ -9,6 +9,7 @@
 	font-size: 15px;
 	padding: 1em;
 	width: 30em;
+	font-family: arial;
 }
 
 .pgnViewer h2
@@ -91,6 +92,7 @@
 	float: left;
 	font-size: 1.85em;
 	margin: 0 0 0.5em;
+	width: 10em;
 }
 
 .pgnViewer .notationWrapper {

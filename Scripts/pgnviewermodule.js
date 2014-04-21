@@ -38,11 +38,12 @@ var pgnViewer = (function($) {
 		this.flip = false;
 		this.hideAnnotations = false;
 
+		// fire this method after the module has been built
 		var moduleCallback = function() {
 			// load the first game
 			this.loadGame(0);
 
-			// get the starting position
+			// set the starting position
 			this.updateBoard(this.chessBoard.startingPosition);
 		};
 
@@ -50,6 +51,8 @@ var pgnViewer = (function($) {
 		this.buildModule($.proxy(moduleCallback, this));
 	};
 
+	// download the current game
+	// TO DO: convert to be a display so the user can copy the pgn
 	pgnViewerModule.prototype.action_download = function($el, val, e) {
 		var content;
 		if(this.hideAnnotations) {
@@ -66,35 +69,42 @@ var pgnViewer = (function($) {
 		a.click();
 	};
 
+	// allow for keyboard interaction
 	pgnViewerModule.prototype.action_handleKeyDown = function($el, val, e) {
 		switch(e.keyCode) {
-			case 37: return this.loadPrevMove(); 
-			case 39: return this.loadNextMove(); 
+			case 37: return this.loadPrevMove(); // left arrow
+			case 39: return this.loadNextMove(); // right arrow
 			default: return;
 		}
 	};
 
+	// show/hide annotations
 	pgnViewerModule.prototype.action_toggleAnnotations = function($el, val, e) {
 		this.hideAnnotations = val;
 	};
 
+	// load a selected game
 	pgnViewerModule.prototype.action_loadGame = function($el, val, e) {
 		this.loadGame(val);
 	};
 
+	// flip the chessboard
 	pgnViewerModule.prototype.action_flip = function($el, val, e) {
 		this.chessBoard.flip = !this.chessBoard.flip;
 		this.updateBoard();
 	};
 
+	// load in the next move
 	pgnViewerModule.prototype.action_nextMove = function($el, val, e) {
 		this.loadNextMove();
 	};
 
+	// load the previous move
 	pgnViewerModule.prototype.action_prevMove = function($el, val, e) {
 		this.loadPrevMove();
 	};
 
+	// jump to the beginning of the game
 	pgnViewerModule.prototype.action_start = function($el, val, e) {
 		var move = this.chessBoard.jumpToMove(-1);
 
@@ -103,6 +113,7 @@ var pgnViewer = (function($) {
 		}
 	};
 
+	// jump to the end of a move
 	pgnViewerModule.prototype.action_end = function($el, val, e) {
 		var move = this.chessBoard.jumpToMove(this.chessBoard.moves.length-1);
 
@@ -111,6 +122,7 @@ var pgnViewer = (function($) {
 		}
 	};
 
+	// jump to a particular move
 	pgnViewerModule.prototype.action_clickMove = function($el, val, e) {
 		var move = this.chessBoard.jumpToMove(val);
 
@@ -119,10 +131,12 @@ var pgnViewer = (function($) {
 		}
 	};
 
+	// select everything within the input/textarea
 	pgnViewerModule.prototype.action_selectAll = function($el, val, e) {
 		$el[0].setSelectionRange(0, $el.val().length);
 	}
 
+	// load the next move
 	pgnViewerModule.prototype.loadNextMove = function() {
 		var move = this.chessBoard.nextMove();
 
@@ -131,6 +145,7 @@ var pgnViewer = (function($) {
 		}
 	};
 
+	// load the previous move
 	pgnViewerModule.prototype.loadPrevMove = function() {
 		var move = this.chessBoard.prevMove();
 
@@ -139,8 +154,9 @@ var pgnViewer = (function($) {
 		}
 	};
 
-
+	// Get the pgn data and when it is loaded, build the GUI
 	pgnViewerModule.prototype.buildModule = function(callback) {
+		// method that will build the gui
 		var buildModule = function() {
 			var $container = $('<div class="container" data-keydownaction="handleKeyDown" tabindex="0"></div>');
 			var $pgnSelect = $('<select data-changeaction="loadGame">');
@@ -169,7 +185,6 @@ var pgnViewer = (function($) {
 			var pgn;
 			for (var i = 0; i < this.pgns.length; i++) {
 				pgn = this.pgns[i];
-				console.info(pgn);
 				$pgnSelect.append($('<option value="' + i + '">' + pgn.white + ' - ' + pgn.black + ' (' + pgn.round + ')</option>'))
 			};
 
@@ -177,6 +192,7 @@ var pgnViewer = (function($) {
 			$boardWrapper.append($board, $controls);
 			$notationWrapper.append($notationWindow, $('<input type="text" name="fen" data-clickaction="selectAll" title="ctrl+c to copy" readonly="readonly" />'))
 
+			// if there are multiple games, add the select box to the gui
 			if(this.pgns.length > 1) {
 				$container.append($pgnSelect);
 			}
@@ -184,12 +200,14 @@ var pgnViewer = (function($) {
 			$container.append($details, $boardWrapper, $notationWrapper, $comments);
 			this.$module.append($container);
 
+			// fire the call back
 			callback();
 		}
 
 		// load in the PGNs from the dom
 		this.loadPGNs($.proxy(buildModule, this));
 	};
+
 	pgnViewerModule.prototype.buildControls = function() {
 		var $c = $('<div class="controls"></div>');
 
@@ -198,8 +216,8 @@ var pgnViewer = (function($) {
 		$c.append($('<button data-clickaction="nextMove">next</button>'));
 		$c.append($('<button data-clickaction="end">end</button>'));
 		$c.append($('<button data-clickaction="flip">flip</button>'));
-		$c.append($('<button data-clickaction="download">get pgn</button>'))
-		//$c.append($('<label><input data-changeaction="toggleAnnotations" type="checkbox" /> Hide annotations</label>'));
+		// $c.append($('<button data-clickaction="download">get pgn</button>'))
+		// $c.append($('<label><input data-changeaction="toggleAnnotations" type="checkbox" /> Hide annotations</label>'));
 
 		return $c;
 	}
@@ -227,6 +245,7 @@ var pgnViewer = (function($) {
 		return true;
 	};
 
+	// update the game information
 	pgnViewerModule.prototype.updateGameDetails = function() {
 		var items = [];
 		var $item;
@@ -274,14 +293,16 @@ var pgnViewer = (function($) {
 			items.push($item);
 		}
 
-
+		// clear the old details
 		this.$el('details').empty();
 		this.$el('details').append(items);
 	};
 
+	// update the GUI with the new move
 	pgnViewerModule.prototype.updateBoard = function(board, move) {
 		// get the new board
 		var diagram = this.generateDiagram(board);
+		// set the current move
 		var move = move || this.chessBoard.currentMoveObject;
 
 		// disable or enable the backward buttons
@@ -296,15 +317,19 @@ var pgnViewer = (function($) {
 		else
 			this.$el('forward').removeAttr('disabled');
 
+		// unhighlight all the moves
 		this.$el('clickMove').removeClass('active');
+		// highlight the current move
 		var $note = this.$el('clickMove').filter('[data-actionvalue="' + this.chessBoard.currentMove + '"]');
 		$note.addClass('active');
 
+		// get the new scroll position
 		var newScrollPos = 0;
 		if($note.length > 0) {
 			newScrollPos = $note.offset().top - this.$el('notation').offset().top + this.$el('notation').scrollTop();
 		}
 
+		// update the FEN input box with the new position
 		if(move === undefined || move.fen === undefined) {
 			this.$el('fenInput').val(this.chessBoard.convertBoardToFEN(this.chessBoard.startingPosition));
 		}
@@ -312,29 +337,37 @@ var pgnViewer = (function($) {
 			this.$el('fenInput').val(move.fen);
 		}
 
+		// scroll the notation window to the new position
 		this.$el('notation').scrollTop(newScrollPos);
 
+		// update the comment box with the new information
 		if(move && move.fullText !== undefined) {
 			var moveText = [];
 			moveText.push('<p>');
 
+			// apply comments before the move
 			moveText.push(move.commentBefore || '');
 			moveText.push(' ');
 
+			// add the move text
 			moveText.push('<strong>')
 			moveText.push(move.moveNumber);
 			moveText.push(move.player === 'w' ? '. ' : '... ')
 			moveText.push(move.algebraic);
 
+			// add the check indicator
 			if(move.check !== undefined) {
 				moveText.push(move.check);
 			}
+
+			// add the NAG
 			if(move.NAG !== undefined) {
 				moveText.push(pgnViewerModule.NAGMap[move.NAG]);
 			}
 
 			moveText.push('</strong>')
 
+			// add the comments after the move
 			if(move.commentAfter) {
 				moveText.push(' ');
 				moveText.push(move.commentAfter);
@@ -353,6 +386,7 @@ var pgnViewer = (function($) {
 		this.$el('board').append(this.drawPaint(move));
 	}
 
+	// Unfinished code to draw arrows/highlights on the gui
 	pgnViewerModule.prototype.drawPaint = function(move) {
 		if(move === undefined) {
 			return;
@@ -365,8 +399,11 @@ var pgnViewer = (function($) {
 		var width = this.$el('board').width();
 	}
 
+	// redraw the moves for the current game
 	pgnViewerModule.prototype.displayMoves = function() {
+		// update the gui
 		this.$el('notation').html(this.setupNotation(this.chessBoard.moves));
+		// refresh the module's clickMove elements
 		this.$el('clickMove', true);
 	}
 
@@ -375,16 +412,18 @@ var pgnViewer = (function($) {
 		var html = [];
 		var self = this;
 
+		// A recursive method that will render moves and variations into an html interface
 		var renderMoves = function(moveArray, addressPrepend) {
-			var output = [];
-			var i = 0;
-			var j = 0;
-			var address = [];
-			var numberSet = false;
+			var output = []; // the full output
+			var i = 0; // all the moves of the game
+			var j = 0; // indicates the moves of this pair
+			var address = []; // the parts of the address for a particular move
+			var numberSet = false; // determines if the number of this move pair has been displayed
 			var whiteMove = false;
 			var blackMoveFirst = false;
 
-			while(i < moveArray.length) { // loop over all the moves provided
+			// loop over all the moves provided
+			while(i < moveArray.length) {
 				numberSet = false;
 				blackMoveFirst = false;
 				j = 0;
@@ -392,21 +431,27 @@ var pgnViewer = (function($) {
 				while(j < 2) { // get the white and black moves
 					if(moveArray[i+j]) { // the actual move
 						
-						address = []; // Reset the move address
+						// Reset the move address
+						address = [];
 						if(addressPrepend) {
 							// add the prepend if necessary
 							address.push(addressPrepend);
 						}
 
-						address.push(i+j); // add the move number to the address
+						// add the move number to the address
+						address.push(i+j);
 						// open the clickable region
 						html.push(' <span data-clickaction="clickMove" data-actionvalue="' + address.join('.') + '" ' + (moveArray[i+j].error !== undefined ? 'class="error"' : '') + '>');
 
-						if(!numberSet) { // generate the move number
+						 // generate the move number
+						if(!numberSet) {
+							// if the move is white's add one period
 							if(moveArray[i+j].player === 'w') {
 								whiteMove = true;
 								html.push(moveArray[i+j].moveNumber + '. '); 
 							}
+
+							// if the move is black's add three periods
 							else {
 								blackMoveFirst = !whiteMove;
 								html.push(moveArray[i+j].moveNumber + '... ');
@@ -416,25 +461,32 @@ var pgnViewer = (function($) {
 						}
 						
 
+						// assign the move address
 						moveArray[i+j].address = address.join('.');
 
-						html.push(moveArray[i+j].algebraic + (moveArray[i+j].check || '')); // add the algebraic move
+						// Draw the algebraic notation
+						html.push(moveArray[i+j].algebraic + (moveArray[i+j].check || '')); 
 
+						// Convert the Numeric Annotation Glyphs to a human readable form
 						if(moveArray[i+j].NAG !== undefined) {
 							html.push(pgnViewerModule.NAGMap[moveArray[i+j].NAG]);
 						}
 
+						// Add an indication that comments are associated with this move
 						if(moveArray[i+j].commentBefore !== '' || moveArray[i+j].commentAfter !== '') {
 							html.push('<sup>c</sup>');
 						}
 
-						if((moveArray[i+j].arrow !== undefined && moveArray[i+j].arrow.length > 0) || (moveArray[i+j].highlight !== undefined && moveArray[i+j].highlight.length > 0)) {
-							html.push('&#9630;')
-						}
+						// Add an indication that there are arrows or highlights associated with this move
+						// if((moveArray[i+j].arrow !== undefined && moveArray[i+j].arrow.length > 0) || (moveArray[i+j].highlight !== undefined && moveArray[i+j].highlight.length > 0)) {
+						// 	html.push('&#9630;')
+						// }
 
-						html.push('</span>'); // close the clickable region
+						// close the clickable region
+						html.push('</span>');
 
-						if(moveArray[i+j].variations.length > 0) { // use recrusion to render the variations
+						 // use recrusion to render the variations
+						if(moveArray[i+j].variations.length > 0) {
 							for (var k = 0; k < moveArray[i+j].variations.length; k++) {
 								html.push('<span class="variation">( '); // open the variation
 								
@@ -444,13 +496,19 @@ var pgnViewer = (function($) {
 									address.push(addressPrepend);
 								}
 
-								address.push(i+j); // add the move number to the address
+								// add the move number to the address
+								address.push(i+j);
 
-								address.push(k+1); // add the variation number to the address
+								// add the variation number to the address
+								address.push(k+1);
 
 								// recursively render variations
 								var obj = renderMoves(moveArray[i+j].variations[k], address.join('.'))
+
+								// attached the moves to the variations
 								moveArray[i+j].variations[k] = obj.moves;
+
+								// add the variation html to the output html
 								html.push(obj.html);
 
 								html.push(' )</span>'); // close the variation
@@ -468,17 +526,24 @@ var pgnViewer = (function($) {
 				i += blackMoveFirst ? 1 : 2;
 			}
 
+			// return the html output and the moves
 			return { html: output.join(''), moves: moveArray };
 		}
 
+		// render all the moves
 		var obj = renderMoves(rMoves);
+
+		// attached the moves to the chess board
 		this.chessBoard.moves = obj.moves;
 		html.push(obj.html);
+
+		// join the html result
 		return html.join('') + '<span class="result">'+ (this.currentGame.result || '*') + '</span>';
 	}
 
 	// Given a PGN, this will return a pgn stripped of all annotations and variations
 	pgnViewerModule.prototype.getPlainGame = function(game) {
+		// verify a pgn was provided
 		if(game === undefined || game.pgn === undefined){
 			this.showError('Invalid PGN provided');
 		}
@@ -495,7 +560,7 @@ var pgnViewer = (function($) {
 		return plainGame;
 	};
 
-	// Gram the PGNs from various locations, either from the DOM or a file
+	// Grab the PGNs from various locations, either from the DOM or a file
 	pgnViewerModule.prototype.loadPGNs = function(callback) {
 		var pgnString = '';
 		var self = this;
@@ -503,6 +568,7 @@ var pgnViewer = (function($) {
 		var buildPGNs = function(response) {
 			pgnString += response;
 
+			// get the data from the pgn attribute
 			if(self.$module.data('pgn')) {
 				pgnString += ' ' + self.$module.data('pgn');
 			}
@@ -536,6 +602,7 @@ var pgnViewer = (function($) {
 			callback();
 		}
 
+		// if a file is specified, retrieve it via ajax
 		if(this.$module.data('pgn-file')) {
 			$.ajax({
 				url: this.$module.data('pgn-file'),
@@ -547,10 +614,8 @@ var pgnViewer = (function($) {
 		}
 	};
 
-	/*
-		Given a PGN, this method will parse out the tags, moves, 
-		variations, and comments so they will be in a useable form
-	*/
+	// Given a PGN, this method will parse out the tags, moves, 
+	// variations, and comments so they will be in a useable form
 	pgnViewerModule.prototype.buildGameFromPGN = function(pgn) {
 		var game = { pgn: pgn };
 
@@ -583,7 +648,7 @@ var pgnViewer = (function($) {
 		return moves;
 	}
 
-	// Converts nested variation strings to useable moves
+	// Converts nested variation strings to useable moves (recursive)
 	pgnViewerModule.prototype.convertVariationsToMoves = function(rVariations) {
 		var subVariations;
 		var moves = [];
@@ -634,18 +699,10 @@ var pgnViewer = (function($) {
 		return rMoves;
 	};
 
-	pgnViewerModule.prototype.displayBoard = function() {
-		if(!this.currentPosition || this.currentPosition.length != 9) {
-			console.info('Warning, no valid board to display.');
-		}
-	};
-
 	// Display an error message
 	pgnViewerModule.prototype.showError = function(message) {
 		console.info('PGN Viewer Error: ' + message)
 	}
-
-
 
 	// Parses a set of moves
 	pgnViewerModule.prototype.convertStringToMoves = function(sMoves) {
@@ -690,11 +747,14 @@ var pgnViewer = (function($) {
 			}
 		});
 
+		// complex regex to get data associated with csl and cal tags
 		var paintRegex = /(\[%csl(?:\s*)((?:(?:R|G)[a-h][1-8](?:\,)?)*)\])?(\[%cal(?:\s*)((?:(?:R|G)[a-h][1-8][a-h][1-8](?:\,)?)*)\])?/gi;
 		var arrowRegex = /(R|G)([a-h][1-8])([a-h][1-8])/gi;
 		var highlightRegex = /(R|G)([a-h][1-8])/gi;
 		var highlight;
 		var arrow;
+
+		// Convert paint tags on each move to something the script can read and generate on screen
 		for (var i = 0; i < moves.length; i++) {
 			if(moves[i].commentAfter !== undefined && moves[i].commentAfter !== '') {
 				moves[i].commentAfter = moves[i].commentAfter.replace(paintRegex, function() {
@@ -829,7 +889,6 @@ var pgnViewer = (function($) {
 		if(!this._moveRegex)
 		{
 			// the regex for finding chess moves
-			// ***** TO DO ***** UPDATE TO SUPPORT CASTLE WITH ZEROES
 			var moveRegex = '(?:([PNBRQK]?[a-h]?[1-8]?x?[a-h][1-8](?:\\=[PNBRQK])?|(?:O|0)(?:-?(?:O|0)){1,2})([\\+#])?)(?:\\s*(?:[\\!\\?]+|\\s*(\\$\\d+)))?\\s*'
 			// optional comments (between curly braces)
 			var commentRegex = '(?:\\s*\\{([^\}]*)\\})?';
@@ -857,6 +916,7 @@ var pgnViewer = (function($) {
 		return this._moveRegex;
 	}
 
+	// a map of NAG => readable
 	pgnViewerModule.NAGMap = {
 		'$0': '', // null annotation
 		'$1': '!', // good move

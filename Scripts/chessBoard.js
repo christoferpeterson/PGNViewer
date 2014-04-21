@@ -103,6 +103,7 @@ var ChessBoard = (function($) {
 			}
 		}
 
+		console.info(this.currentMoveObject);
 		return this.currentMoveObject;
 	};
 
