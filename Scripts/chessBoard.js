@@ -103,7 +103,6 @@ var ChessBoard = (function($) {
 			}
 		}
 
-		console.info(this.currentMoveObject);
 		return this.currentMoveObject;
 	};
 
@@ -576,7 +575,7 @@ var ChessBoard = (function($) {
 	chess_board.prototype.movePiece = function(start, end, board, promotionPiece) {
 		if(start === undefined || end === undefined || board === undefined || board.squares === undefined) {
 			this.displayBoard(board);
-			console.info('start', start, 'end', end, 'board', board)
+			//console.info('start', start, 'end', end, 'board', board)
 			throw('not enough info to move a piece start: ' + start + ', end: ' + end);
 		}
 

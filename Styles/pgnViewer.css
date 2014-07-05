@@ -4,12 +4,16 @@
 	src: url('../fonts/DiaTTUSA.woff'),
 		 url('../fonts/DiaTTUSA.ttf');
 }
-
 .pgnViewer {
 	font-size: 15px;
-	padding: 1em;
-	width: 30em;
+	padding: 10px;
 	font-family: arial;
+	min-width: 320px;
+	box-sizing: border-box;
+}
+
+.pgnViewer div {
+	box-sizing: border-box;
 }
 
 .pgnViewer h2
@@ -49,17 +53,94 @@
 
 .pgnViewer .board {
 	white-space: nowrap;
-	width: 10em;
-	height: 10em;
 	position: relative;
 }
 
-.pgnViewer .board .svg, 
 .pgnViewer .board div.diagram
 {
+	height: 100%;
+	width: 100%;
+	margin-bottom: 5px;
+}
+
+.pgnViewer .board div.diagram .rank
+{
+	height: calc(12.5% - 6px);
+}
+
+.pgnViewer .board div.diagram .rank.top,
+.pgnViewer .board div.diagram .rank.bottom {
+	height: 18px;
+}
+
+.pgnViewer .board div.diagram .rank div
+{
+	display: inline-block;
+	width: calc(12.5% - 6px);
+	height: 100%;
+	text-align: center;
+	font-weight: bold;
+	background: #eeeeee;
+	position: relative;
+}
+
+.pgnViewer .board div.diagram .rank div:first-child,
+.pgnViewer .board div.diagram .rank div:last-child {
+	background: transparent;
+	width: 24px;
+}
+
+.pgnViewer .board div.diagram .rank div:first-child  > span
+{
+	right: 15px;
+}
+
+.pgnViewer .board div.diagram .rank div:last-child > span
+{
+	left: 5px;
+}
+
+.pgnViewer .board div.diagram .rank div > span
+{
 	position: absolute;
-	top:0;
-	left: 0;
+	top: 50%;
+	display: block;
+	height: 1em;
+}
+
+.pgnViewer .board div.diagram .rank div > span > span
+{
+	position: absolute;
+	top: -50%;
+	display: block;
+	height: 1em;
+}
+
+.pgnViewer .board div.diagram .rank.top div,
+.pgnViewer .board div.diagram .rank.bottom div
+{
+	background: transparent;
+}
+
+.pgnViewer .board div.diagram .rank.top
+{
+	padding-bottom: 8px;
+}
+
+.pgnViewer .board div.diagram .rank.bottom
+{
+	padding-top: 5px;
+}
+
+.pgnViewer .board div.diagram .rank div.dark-square
+{
+	background: #7a8dba;
+}
+
+.pgnViewer .board div.diagram td img
+{
+	height: 100%;
+	width: 100%;
 }
 
 .pgnViewer .board .svg 
@@ -69,18 +150,13 @@
 	width: 100%;
 }
 
-.pgnViewer .board div.diagram
-{
-	font-family: 'chessBoard';
-}
-
 .pgnViewer .container:focus {
 	outline: none;
 	border: none;
 }
 
 .pgnViewer label {
-	font-size: 0.85em;
+	font-size: 0.6em;
 }
 
 .pgnViewer label input {
@@ -88,41 +164,56 @@
 	top: 2px;
 }
 
-.pgnViewer .boardWrapper {
-	float: left;
-	font-size: 1.85em;
-	margin: 0 0 0.5em;
-	width: 10em;
-}
-
 .pgnViewer .notationWrapper {
-	width: 11.5em;
-	float: left;
-	margin: 0 0 0.5em;
+	padding: 0 0 0 8px;
 }
 
 .pgnViewer .notationWindow {
-	height: 17em;
 	width: 100%;
-	margin: 1em 0em 0.5em;
 	overflow-y: auto;
 	font-weight: bold;
+	padding-top: 8px;
+	font-size: 1.25em;
 }
 
-.pgnViewer .comments { 
-	margin-top: 0.5em;
-	padding: 0.5em;
-	border: 1px solid black;
+.pgnViewer .comments {
 	clear: both;
-	height: 5em;
 	overflow-y: auto;
+	padding: 1em 1em 1em 0;
+	margin-top: 10px;
+	font-size: 1.4em;
 }
 
 .pgnViewer .controls {
-	font-size: 10pt;
+	font-size: 1.5em;
 	text-align: center;
-	clear: both;
-	margin: 0 auto;
+	width: 100%;
+	padding: 0 0 8px 0;
+	display: table;
+}
+
+.pgnViewer .controls button
+ {
+	display: table-cell;
+	height: 50px;
+	width: 20%;
+	padding: 15px;
+}
+
+.pgnViewer .additionalControls button
+{
+	height: 50px;
+	padding: 15px;
+	width: 20%;
+	display: inline-block;
+}
+
+.pgnViewer .additionalControls label
+{
+	box-sizing: border-box;
+	width: 60%;
+	padding-left: 8px;
+	display: inline-block;
 }
 
 .pgnViewer .variation {
@@ -166,4 +257,40 @@
 .pgnViewer [data-clickaction="clickMove"].error {
 	background: red;
 	color: #fff;
+}
+
+.pgnViewer .mobile
+{
+	display: none !important;
+}
+
+
+/* Smartphones (portrait and landscape) ----------- */
+@media only screen 
+and (min-width : 481px) {
+	.pgnViewer .boardWrapper,
+	.pgnViewer .notationWrapper {
+		width: 50%;
+		float: left;
+	}
+
+	.pgnViewer .notationWindow {
+		max-height: 35%;
+	}
+
+
+	.pgnViewer .comments{
+		max-height: 65%;
+	}
+}
+
+@media only screen
+and (max-width : 480px) {
+	.pgnViewer .mobile {
+		display: table-cell !important;
+	}
+
+	.pgnViewer .not-mobile {
+		display: none !important;
+	}
 }

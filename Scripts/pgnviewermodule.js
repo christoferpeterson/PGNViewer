@@ -4,12 +4,13 @@ var pgnViewer = (function($) {
 		if(moduleId) {
 			this.init(moduleId);
 		}
-	};
+	}
 
 	pgnViewerModule.prototype = new Module();
 
 	pgnViewerModule.prototype.elementMap = {
 		'container': 'div.container',
+		'notationWrapper': 'div.notationWrapper',
 		'notation' : 'div.notationWindow',
 		'board' : 'div.board',
 		'backward': '[data-clickaction="prevMove"], [data-clickaction="start"]',
@@ -18,8 +19,9 @@ var pgnViewer = (function($) {
 		'comments': 'div.comments',
 		'fenInput': 'input[name="fen"]',
 		'details': 'div.details',
-		'svg': 'div.svg'
-	};
+		'svg': 'div.svg',
+		'play': 'button[data-clickaction="play"]'
+	}
 
 	pgnViewerModule.prototype.initModule = function () {
 		var pgnViewerClass = 'pgnViewer';
@@ -45,11 +47,21 @@ var pgnViewer = (function($) {
 
 			// set the starting position
 			this.updateBoard(this.chessBoard.startingPosition);
+			this.windowResized();
 		};
 
 		// build the module
 		this.buildModule($.proxy(moduleCallback, this));
-	};
+
+		//this.windowResized();
+		window.addEventListener("resize", $.proxy(this.windowResized, this));
+	}
+
+	pgnViewerModule.prototype.windowResized = function(e) {
+		var width = this.$el('board').width();
+		this.$el('board').height(width);
+		this.$el('notationWrapper').height(width - 10);
+	}
 
 	// download the current game
 	// TO DO: convert to be a display so the user can copy the pgn
@@ -67,46 +79,78 @@ var pgnViewer = (function($) {
 		a.href = window.URL.createObjectURL(blob);
 		a.download = this.currentGame.white + ' - ' + this.currentGame.black + '.pgn';
 		a.click();
-	};
+	}
 
 	// allow for keyboard interaction
 	pgnViewerModule.prototype.action_handleKeyDown = function($el, val, e) {
 		switch(e.keyCode) {
-			case 37: return this.loadPrevMove(); // left arrow
-			case 39: return this.loadNextMove(); // right arrow
+			case 37: { this.stop(); return this.loadPrevMove(); } // left arrow
+			case 39: { this.stop(); return this.loadNextMove(); } // right arrow
 			default: return;
 		}
-	};
+	}
 
 	// show/hide annotations
 	pgnViewerModule.prototype.action_toggleAnnotations = function($el, val, e) {
 		this.hideAnnotations = val;
-	};
+	}
 
 	// load a selected game
 	pgnViewerModule.prototype.action_loadGame = function($el, val, e) {
+		this.stop();
 		this.loadGame(val);
-	};
+	}
 
 	// flip the chessboard
 	pgnViewerModule.prototype.action_flip = function($el, val, e) {
 		this.chessBoard.flip = !this.chessBoard.flip;
 		this.updateBoard();
-	};
+	}
 
 	// load in the next move
 	pgnViewerModule.prototype.action_nextMove = function($el, val, e) {
+		this.stop();
 		this.loadNextMove();
-	};
+	}
 
 	// load the previous move
 	pgnViewerModule.prototype.action_prevMove = function($el, val, e) {
+		this.stop();
 		this.loadPrevMove();
-	};
+	}
+
+	// handle the pressing of the play button
+	pgnViewerModule.prototype.action_play = function($el, val, e) {
+		this.play();
+	}
+
+	// move 
+	pgnViewerModule.prototype.play = function() {
+		if(this.playInterval)
+		{
+			this.stop();
+		}
+		else
+		{
+			this.loadNextMove();
+			this.playInterval = setInterval($.proxy(this.loadNextMove, this), 1000);
+			this.$el('play').text('stop');
+		}
+	}
+
+	pgnViewerModule.prototype.stop = function() {
+		if(this.playInterval)
+		{
+			clearInterval(this.playInterval);
+			this.$el('play').text('play');
+			delete this.playInterval;
+		}
+	}
 
 	// jump to the beginning of the game
 	pgnViewerModule.prototype.action_start = function($el, val, e) {
 		var move = this.chessBoard.jumpToMove(-1);
+		this.stop();
 
 		if(move) {
 			this.updateBoard();
@@ -116,15 +160,17 @@ var pgnViewer = (function($) {
 	// jump to the end of a move
 	pgnViewerModule.prototype.action_end = function($el, val, e) {
 		var move = this.chessBoard.jumpToMove(this.chessBoard.moves.length-1);
+		this.stop();
 
 		if(move) {
 			this.updateBoard();
 		}
 	};
 
-	// jump to a particular move
+	// jump to a particular move 
 	pgnViewerModule.prototype.action_clickMove = function($el, val, e) {
 		var move = this.chessBoard.jumpToMove(val);
+		this.stop();
 
 		if(move) {
 			this.updateBoard();
@@ -166,6 +212,7 @@ var pgnViewer = (function($) {
 			var $notationWrapper = $('<div class="notationWrapper"></div>');
 			var $notationWindow = $('<div class="notationWindow"></div>');
 			var $comments = $('<div class="comments"></div>');
+			var $additionalControls = this.buildAdditionalControls();
 			var $controls = this.buildControls();
 
 			// draw the basic starting position
@@ -190,14 +237,14 @@ var pgnViewer = (function($) {
 
 			$board.html(b.join('<br />\r\n'));
 			$boardWrapper.append($board, $controls);
-			$notationWrapper.append($notationWindow, $('<input type="text" name="fen" data-clickaction="selectAll" title="ctrl+c to copy" readonly="readonly" />'))
+			$notationWrapper.append($additionalControls, $notationWindow, $comments);
 
 			// if there are multiple games, add the select box to the gui
 			if(this.pgns.length > 1) {
 				$container.append($pgnSelect);
 			}
 
-			$container.append($details, $boardWrapper, $notationWrapper, $comments);
+			$container.append($details, $boardWrapper, $notationWrapper);
 			this.$module.append($container);
 
 			// fire the call back
@@ -211,12 +258,22 @@ var pgnViewer = (function($) {
 	pgnViewerModule.prototype.buildControls = function() {
 		var $c = $('<div class="controls"></div>');
 
-		$c.append($('<button data-clickaction="start">start</button>'));
+		$c.append($('<button class="not-mobile" data-clickaction="start">start</button>'));
 		$c.append($('<button data-clickaction="prevMove">prev</button>'));
+		$c.append($('<button data-clickaction="play">play</button>'));
 		$c.append($('<button data-clickaction="nextMove">next</button>'));
-		$c.append($('<button data-clickaction="end">end</button>'));
+		$c.append($('<button class="not-mobile" data-clickaction="end">end</button>'));
+		$c.append($('<button class="mobile" data-clickaction="flip">flip</button>'));
+		// $c.append($('<label><input data-changeaction="toggleAnnotations" type="checkbox" /> Hide annotations</label>'));
+
+		return $c;
+	}
+
+	pgnViewerModule.prototype.buildAdditionalControls = function() {
+		var $c = $('<div class="additionalControls not-mobile"></div>');
 		$c.append($('<button data-clickaction="flip">flip</button>'));
-		// $c.append($('<button data-clickaction="download">get pgn</button>'))
+		$c.append($('<button data-clickaction="download">pgn</button>'));
+		$c.append($('<label>FEN <input type="text" name="fen" data-clickaction="selectAll" title="ctrl+c to copy" readonly="readonly" /></label>'));
 		// $c.append($('<label><input data-changeaction="toggleAnnotations" type="checkbox" /> Hide annotations</label>'));
 
 		return $c;
@@ -818,9 +875,14 @@ var pgnViewer = (function($) {
 
 		// show the top border of the board
 		if(this.chessBoard.flip)
-			output.push('XHGFEDCBAY');
+		{
+			output.push('<div class="rank top"><div></div><div>h</div><div>g</div><div>f</div><div>e</div><div>d</div><div>c</div><div>b</div><div>a</div><div></div></div>');
+		}
 		else
-			output.push('XABCDEFGHY');
+		{			
+			//output.push('XABCDEFGHY');
+			output.push('<div class="rank top"><div></div><div>a</div><div>b</div><div>c</div><div>d</div><div>e</div><div>f</div><div>g</div><div>h</div><div></div></div>');
+		}
 
 		// depending on orientation, the counter needs to go up or down
 		i = this.chessBoard.flip ? 7 : 56;
@@ -833,37 +895,45 @@ var pgnViewer = (function($) {
 			rank = [];
 			rankNumber = this.chessBoard.flip ? (i+1)/8 : (i+8)/8;
 
+			rank.push('<div class="rank">');
+			rank.push('<div><span><span>' + rankNumber + '</span></span></div>');
+
 			// add the left border
-			rank.push(rankNumber);
+			// rank.push(rankNumber);
 
 			while(j < 8) {
 
+				rank.push('<div');
 				// calculate the current board position
 				pos = this.chessBoard.flip ? i-j : i+j;
 
 				isDark = (darkSquare && pos%2 === 0) || (!darkSquare && pos%2 !== 0);
 
-				// if the square is occupied
-				if(board.squares[pos]) {
-					if(isDark) {
-						rank.push(board.squares[pos].blackSquare);
-					}
-					rank.push(board.squares[pos].diagram);
+				if(isDark)
+				{
+					rank.push(' class="dark-square"');
 				}
 
-				// display an empty square
-				else {
-					if(isDark)
-						rank.push('+');
-					else
-						rank.push('-');
+				rank.push('>');
+
+				// if the square is occupied
+				if(board.squares[pos]) {
+					var img = (board.squares[pos].owner + board.squares[pos].fen).toLowerCase();
+					rank.push('<img src="images/' + img + '.svg" />');
 				}
+				else {
+					rank.push('<img src="images/empty.svg" />');
+				}
+
+				rank.push('</div>');
 				
 				j++; // continue across the rank
 			}
 
 			// add the right border
-			rank.push(this.diagramBorderMap[rankNumber]);
+			//rank.push(this.diagramBorderMap[rankNumber]);
+			rank.push('<div><span><span>' + rankNumber + '</span></span></div>');
+			rank.push('</div>');
 
 			i+= this.chessBoard.flip ? 8 : -8;
 
@@ -876,12 +946,17 @@ var pgnViewer = (function($) {
 
 		// show the bottom border of the board
 		if(this.chessBoard.flip)
-			output.push('xhgfedcbay');
+		{
+			output.push('<div class="rank top"><div></div><div>h</div><div>g</div><div>f</div><div>e</div><div>d</div><div>c</div><div>b</div><div>a</div><div></div></div>');
+		}
 		else
-			output.push('xabcdefghy');
+		{			
+			//output.push('XABCDEFGHY');
+			output.push('<div class="rank bottom"><div></div><div>a</div><div>b</div><div>c</div><div>d</div><div>e</div><div>f</div><div>g</div><div>h</div><div></div></div>');
+		}
 
 		// join all the text required for the diagram
-		return output.join('<br />');
+		return output.join('');
 	};
 
 	// Returns a constructed regex necessary for parsing chess moves

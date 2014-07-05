@@ -5,27 +5,7 @@
 		<link href="styles/pgnViewer.css" rel="stylesheet" type="text/css" media="screen" />
 	</head>
 	<body>
-		<div style="width: 100px; height: 100px; background: red; display: inline-block;">
-			<img src="images/bk.svg" />		
-		</div>
-		<div style="width: 100px; height: 100px; background: red; display: inline-block;">
-			<img src="images/bq.svg" />
-		</div>
-		<div style="width: 100px; height: 100px; background: red; display: inline-block;">
-			<img src="images/br.svg" />
-		</div>
-		<div style="width: 100px; height: 100px; background: red; display: inline-block;">
-			<img src="images/bb.svg" />
-		</div>
-		<div style="width: 100px; height: 100px; background: red; display: inline-block;">
-			<img src="images/bn.svg" />
-		</div>
-		<div style="width: 100px; height: 100px; background: red; display: inline-block;">
-			<img src="images/bp.svg" />
-		</div>
-
 		<div id="pgnviewer-1" data-pgn-file="pgns/test.pgn"></div>
-		<div id="pgnviewer-2" data-pgn-file="pgns/test.pgn"></div>
 
 		<script src="//code.jquery.com/jquery-1.10.1.min.js"></script>
 		<script>
@@ -39,7 +19,6 @@
 		<script>
 			(function($) {
 				var viewer1 = new pgnViewer('#pgnviewer-1');
-				var viewer2 = new pgnViewer('#pgnviewer-2');
 			})(jquery_1_10_1);
 		</script>
 	</body>
