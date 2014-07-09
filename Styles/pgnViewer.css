@@ -1,9 +1,3 @@
-@font-face
-{
-	font-family: 'chessBoard';
-	src: url('../fonts/DiaTTUSA.woff'),
-		 url('../fonts/DiaTTUSA.ttf');
-}
 .pgnViewer {
 	font-size: 15px;
 	padding: 10px;
@@ -137,6 +131,18 @@
 	background: #7a8dba;
 }
 
+.pgnViewer .board div.diagram .rank div.origin-square,
+.pgnViewer .board div.diagram .rank div.destination-square
+{
+	background: #F1C3C3;
+}
+
+.pgnViewer .board div.diagram .rank div.dark-square.origin-square,
+.pgnViewer .board div.diagram .rank div.dark-square.destination-square
+{
+	background: #927398;
+}
+
 .pgnViewer .board div.diagram td img
 {
 	height: 100%;
@@ -150,7 +156,7 @@
 	width: 100%;
 }
 
-.pgnViewer .container:focus {
+.pgnViewer .pgnContainer:focus {
 	outline: none;
 	border: none;
 }
@@ -174,6 +180,7 @@
 	font-weight: bold;
 	padding-top: 8px;
 	font-size: 1.25em;
+	padding: 8px 10px 8px;
 }
 
 .pgnViewer .comments {
@@ -198,6 +205,11 @@
 	height: 50px;
 	width: 20%;
 	padding: 15px;
+}
+
+.pgnViewer .additionalControls 
+{
+	margin-bottom: 10px;
 }
 
 .pgnViewer .additionalControls button
@@ -240,6 +252,14 @@
 	margin-top: 5px;
 }
 
+.pgnViewer span.comment
+{
+	font-weight: normal;
+	font-size: 0.85em;
+	color: #777;
+	margin: 0 5px;
+}
+
 .pgnViewer [data-clickaction] {
 	cursor: pointer;
 	margin: 0 0 3px;
@@ -268,19 +288,30 @@
 /* Smartphones (portrait and landscape) ----------- */
 @media only screen 
 and (min-width : 481px) {
-	.pgnViewer .boardWrapper,
 	.pgnViewer .notationWrapper {
-		width: 50%;
+		width: 60%;
+		float: left;
+	}
+
+	.pgnViewer .boardWrapper {
+		width: 40%;
 		float: left;
 	}
 
 	.pgnViewer .notationWindow {
-		max-height: 35%;
+		max-height: 100%;
+	}
+}
+
+@media only screen
+and (min-width: 320px) 
+and (max-width: 480px) {
+	.pgnViewer .notationWindow  {
+		height: 300px;
 	}
 
-
-	.pgnViewer .comments{
-		max-height: 65%;
+	.pgnViewer .controls button {
+		width: 25%;
 	}
 }
 

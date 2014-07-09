@@ -215,8 +215,7 @@ var ChessBoard = (function($) {
 			promotionPiece: What the piece turned into,
 			castle: castled
 		}
-		***** TO DO ***** SUPPORT IN-CHECK RULES
-		done: promotion, captures, en passant, castling, normal moves
+		done: check, promotion, captures, en passant, castling, normal moves
 	*/
 	chess_board.prototype.checkMove = function(oMove, board, originalMove) {
 		if(!oMove || !board ) {

@@ -9,7 +9,7 @@ var pgnViewer = (function($) {
 	pgnViewerModule.prototype = new Module();
 
 	pgnViewerModule.prototype.elementMap = {
-		'container': 'div.container',
+		'container': 'div.pgnContainer',
 		'notationWrapper': 'div.notationWrapper',
 		'notation' : 'div.notationWindow',
 		'board' : 'div.board',
@@ -204,14 +204,13 @@ var pgnViewer = (function($) {
 	pgnViewerModule.prototype.buildModule = function(callback) {
 		// method that will build the gui
 		var buildModule = function() {
-			var $container = $('<div class="container" data-keydownaction="handleKeyDown" tabindex="0"></div>');
+			var $container = $('<div class="pgnContainer" data-keydownaction="handleKeyDown" tabindex="0"></div>');
 			var $pgnSelect = $('<select data-changeaction="loadGame">');
 			var $details = $('<div class="details"></div>')
 			var $boardWrapper = $('<div class="boardWrapper"></div>');
 			var $board = $('<div class="board"></div>');
 			var $notationWrapper = $('<div class="notationWrapper"></div>');
 			var $notationWindow = $('<div class="notationWindow"></div>');
-			var $comments = $('<div class="comments"></div>');
 			var $additionalControls = this.buildAdditionalControls();
 			var $controls = this.buildControls();
 
@@ -237,7 +236,7 @@ var pgnViewer = (function($) {
 
 			$board.html(b.join('<br />\r\n'));
 			$boardWrapper.append($board, $controls);
-			$notationWrapper.append($additionalControls, $notationWindow, $comments);
+			$notationWrapper.append($additionalControls, $notationWindow);
 
 			// if there are multiple games, add the select box to the gui
 			if(this.pgns.length > 1) {
@@ -397,47 +396,6 @@ var pgnViewer = (function($) {
 		// scroll the notation window to the new position
 		this.$el('notation').scrollTop(newScrollPos);
 
-		// update the comment box with the new information
-		if(move && move.fullText !== undefined) {
-			var moveText = [];
-			moveText.push('<p>');
-
-			// apply comments before the move
-			moveText.push(move.commentBefore || '');
-			moveText.push(' ');
-
-			// add the move text
-			moveText.push('<strong>')
-			moveText.push(move.moveNumber);
-			moveText.push(move.player === 'w' ? '. ' : '... ')
-			moveText.push(move.algebraic);
-
-			// add the check indicator
-			if(move.check !== undefined) {
-				moveText.push(move.check);
-			}
-
-			// add the NAG
-			if(move.NAG !== undefined) {
-				moveText.push(pgnViewerModule.NAGMap[move.NAG]);
-			}
-
-			moveText.push('</strong>')
-
-			// add the comments after the move
-			if(move.commentAfter) {
-				moveText.push(' ');
-				moveText.push(move.commentAfter);
-			}
-
-			moveText.push('</p>');
-
-			this.$el('comments').html(moveText.join(''));
-		}
-		else {
-			this.$el('comments').empty();
-		}
-
 		// display the board on the screen
 		this.$el('board').html('<div class="diagram">' + diagram + '</div>');
 		this.$el('board').append(this.drawPaint(move));
@@ -488,6 +446,12 @@ var pgnViewer = (function($) {
 				while(j < 2) { // get the white and black moves
 					if(moveArray[i+j]) { // the actual move
 						
+						// add the pre move comments
+						if(moveArray[i+j].commentBefore !== '')
+						{
+							html.push('<span class="comment">' + moveArray[i+j].commentBefore + '</span>');
+						}
+
 						// Reset the move address
 						address = [];
 						if(addressPrepend) {
@@ -501,7 +465,7 @@ var pgnViewer = (function($) {
 						html.push(' <span data-clickaction="clickMove" data-actionvalue="' + address.join('.') + '" ' + (moveArray[i+j].error !== undefined ? 'class="error"' : '') + '>');
 
 						 // generate the move number
-						if(!numberSet) {
+						if(!numberSet || moveArray[i+j].commentBefore !== '') {
 							// if the move is white's add one period
 							if(moveArray[i+j].player === 'w') {
 								whiteMove = true;
@@ -529,11 +493,6 @@ var pgnViewer = (function($) {
 							html.push(pgnViewerModule.NAGMap[moveArray[i+j].NAG]);
 						}
 
-						// Add an indication that comments are associated with this move
-						if(moveArray[i+j].commentBefore !== '' || moveArray[i+j].commentAfter !== '') {
-							html.push('<sup>c</sup>');
-						}
-
 						// Add an indication that there are arrows or highlights associated with this move
 						// if((moveArray[i+j].arrow !== undefined && moveArray[i+j].arrow.length > 0) || (moveArray[i+j].highlight !== undefined && moveArray[i+j].highlight.length > 0)) {
 						// 	html.push('&#9630;')
@@ -541,6 +500,12 @@ var pgnViewer = (function($) {
 
 						// close the clickable region
 						html.push('</span>');
+
+						// add the post move comments
+						if(moveArray[i+j].commentAfter !== '')
+						{
+							html.push('<span class="comment">' + moveArray[i+j].commentAfter + '</span>')
+						}
 
 						 // use recrusion to render the variations
 						if(moveArray[i+j].variations.length > 0) {
@@ -571,6 +536,11 @@ var pgnViewer = (function($) {
 								html.push(' )</span>'); // close the variation
 							}
 
+							numberSet = false;
+						}
+
+						if(moveArray[i+j].commentAfter !== '')
+						{
 							numberSet = false;
 						}
 					}
@@ -855,10 +825,12 @@ var pgnViewer = (function($) {
 
 	// Displays the chess board using USCF's diagram font
 	pgnViewerModule.prototype.generateDiagram = function(board) {
+		console.info(this);
 		board = board || this.chessBoard.currentPosition;
 		var type = typeof board;
 		var output = [];
 		var rank;
+		var className;
 		var darkSquare;
 		var i = 0;
 		var j = 0;
@@ -909,9 +881,25 @@ var pgnViewer = (function($) {
 
 				isDark = (darkSquare && pos%2 === 0) || (!darkSquare && pos%2 !== 0);
 
+				className = [];
 				if(isDark)
 				{
-					rank.push(' class="dark-square"');
+					className.push("dark-square");
+				}
+
+				if(this.chessBoard.currentMoveObject.origin == pos)
+				{
+					className.push("origin-square");
+				}
+
+				if(this.chessBoard.currentMoveObject.destination == pos)
+				{
+					className.push("destination-square");
+				}
+
+				if(className)
+				{
+					rank.push(' class="' + className.join(' ') + '"');
 				}
 
 				rank.push('>');
